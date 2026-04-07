@@ -1,7 +1,7 @@
 name: qade
 version: "1.0.0"
 description: "QADE - Quant Analyst Decision Environment"
-entry_point: "env:app"
+entry_point: "server.app:app"
 
 observation_space:
   price_history:
