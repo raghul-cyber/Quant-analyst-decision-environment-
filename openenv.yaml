@@ -1,0 +1,83 @@
+name: qade
+version: "1.0.0"
+description: "Quant Analyst Decision Environment — AI agent learns to trade stocks across 3 difficulty tasks"
+tags: [openenv, trading, finance, rl, quant]
+
+observation_space:
+  price_history:
+    type: list[float]
+    description: "Last 30 closing prices"
+  rsi:
+    type: float
+    description: "RSI indicator clamped between 0.0 and 100.0"
+  macd:
+    type: float
+    description: "MACD line value"
+  macd_signal:
+    type: float
+    description: "MACD signal line (9-period EMA)"
+  volume:
+    type: float
+    description: "Current volume (normalized)"
+  sentiment_score:
+    type: float
+    description: "Sentiment score clamped to [-1.0, 1.0]"
+  volatility:
+    type: float
+    description: "Annualized historical volatility limit"
+  portfolio_cash:
+    type: float
+    description: "Cash available in USD"
+  portfolio_shares:
+    type: float
+    description: "Number of shares currently held"
+  portfolio_value:
+    type: float
+    description: "Total portfolio value (cash + shares * current_price)"
+  step:
+    type: int
+    description: "Current episode step number"
+  task_name:
+    type: string
+    description: "Which task configuration is currently running"
+
+action_space:
+  action_type:
+    type: Literal["BUY", "SELL", "HOLD"]
+    description: "Action mode to execute"
+  amount:
+    type: float
+    description: "Dollar amount of transaction (ignored or 0.0 for HOLD)"
+  reasoning:
+    type: string
+    description: "Optional agent reasoning logic explaining decision"
+
+reward:
+  range: [-5.0, 5.0]
+  description: "Per-step reward: pnl delta + bonuses - penalties"
+  shaped: true
+
+tasks:
+  - name: bull_trend
+    difficulty: easy
+    max_steps: 30
+    success_threshold: 0.6
+  - name: noisy_market
+    difficulty: medium
+    max_steps: 50
+    success_threshold: 0.45
+  - name: shock_recovery
+    difficulty: hard
+    max_steps: 80
+    success_threshold: 0.3
+
+endpoints:
+  reset: POST /reset
+  step: POST /step
+  state: GET /state
+  health: GET /health
+
+runtime:
+  port: 7860
+  memory_gb: 4
+  cpu: 2
