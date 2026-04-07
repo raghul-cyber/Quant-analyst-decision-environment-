@@ -1,7 +1,7 @@
 name: qade
 version: "1.0.0"
-description: "Quant Analyst Decision Environment — AI agent learns to trade stocks across 3 difficulty tasks"
-tags: [openenv, trading, finance, rl, quant]
+description: "QADE - Quant Analyst Decision Environment"
+entry_point: "env:app"
 
 observation_space:
   price_history:
@@ -79,5 +79,5 @@ endpoints:
 
 runtime:
   port: 7860
-  memory_gb: 4
   cpu: 2
+  memory_gb: 8

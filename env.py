@@ -268,7 +268,7 @@ def state_endpoint(task: str = "easy"):
     return envs[task].state()
 
 @app.get("/health")
-def health_endpoint():
+def health():
     return {"status": "ok"}
 
 @app.get("/episodes")
