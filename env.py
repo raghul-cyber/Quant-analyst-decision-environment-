@@ -249,17 +249,32 @@ envs: Dict[str, QADEEnv] = {
     "hard": QADEEnv("hard")
 }
 
+TASK_ALIASES = {
+    # Short names
+    "easy":   "easy",
+    "medium": "medium",
+    "hard":   "hard",
+
+    # Full names (pass through)
+    "bull_trend":     "easy",
+    "noisy_market":   "medium",
+    "shock_recovery": "hard",
+}
+
 @app.post("/reset", response_model=QADEObservation)
 def reset_endpoint(task: str = "easy"):
-    if task not in envs:
+    normalized = TASK_ALIASES.get(task, "easy")
+    if normalized not in envs:
         raise HTTPException(status_code=400, detail="Invalid task configuration mapping requested.")
-    return envs[task].reset()
+    app.state.env = envs[normalized]
+    return envs[normalized].reset()
 
 @app.post("/step", response_model=StepResult)
 def step_endpoint(action: QADEAction, task: str = Query("easy")):
-    if task not in envs:
+    normalized = TASK_ALIASES.get(task, "easy")
+    if normalized not in envs:
         raise HTTPException(status_code=400, detail="Invalid task configuration mapping requested.")
-    return envs[task].step(action)
+    return envs[normalized].step(action)
 
 @app.get("/state")
 def state_endpoint(task: str = "easy"):
