@@ -29,4 +29,5 @@ def grade(episode_log: dict) -> float:
     n_trades = sum(1 for a in actions if a.get("action_type") in ["BUY", "SELL"])
     efficiency_score = max(0.0, 1.0 - n_trades / 20.0)
 
-    return 0.4 * profit_score + 0.4 * drawdown_score + 0.2 * efficiency_score
+    raw_score = 0.4 * profit_score + 0.4 * drawdown_score + 0.2 * efficiency_score
+    return min(max(raw_score, 0.01), 0.99)

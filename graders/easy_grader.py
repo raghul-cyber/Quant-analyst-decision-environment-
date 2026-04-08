@@ -31,4 +31,5 @@ def grade(episode_log: dict) -> float:
 
     direction_score = correct_steps / limit if limit > 0 else 0.0
     
-    return 0.5 * return_score + 0.5 * direction_score
+    raw_score = 0.5 * return_score + 0.5 * direction_score
+    return min(max(raw_score, 0.01), 0.99)
