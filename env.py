@@ -269,12 +269,29 @@ def reset_endpoint(task: str = "easy"):
     app.state.env = envs[normalized]
     return envs[normalized].reset()
 
+def _clamp_reward(r: float) -> float:
+    """Reward must be strictly non-zero per OpenEnv spec."""
+    if r == 0.0:
+        return 0.001
+    return float(r)
+
 @app.post("/step", response_model=StepResult)
 def step_endpoint(action: QADEAction, task: str = Query("easy")):
     normalized = TASK_ALIASES.get(task, "easy")
     if normalized not in envs:
         raise HTTPException(status_code=400, detail="Invalid task configuration mapping requested.")
-    return envs[normalized].step(action)
+    
+    result = envs[normalized].step(action)
+    
+    # CRITICAL: never return exactly 0.0 reward
+    safe_reward = _clamp_reward(result.reward)
+    
+    return {
+        "observation": result.observation.model_dump(),
+        "reward": safe_reward,
+        "done": result.done,
+        "info": result.info
+    }
 
 @app.get("/state")
 def state_endpoint(task: str = "easy"):

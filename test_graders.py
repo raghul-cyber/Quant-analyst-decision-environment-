@@ -1,39 +1,63 @@
 from graders import get_grader
 
-def make_fake_log(task_name):
-    return {
-        "actions": [
-            {"action_type": "BUY",  "amount": 500.0},
-            {"action_type": "HOLD", "amount": 0.0},
-            {"action_type": "SELL", "amount": 300.0},
-        ],
-        "rewards": [0.5, 0.1, -0.2],
-        "portfolio_values": [10000, 10200, 10150, 10300],
-        "final_portfolio_value": 10300.0,
+EDGE_CASE_LOGS = [
+    # Case 1: Zero profit (most likely to produce 0.0)
+    {
+        "actions": [],
+        "rewards": [0.0, 0.0, 0.0],
+        "portfolio_values": [10000, 10000, 10000],
+        "final_portfolio_value": 10000.0,
         "initial_portfolio_value": 10000.0,
         "steps_taken": 3,
-        "task_config": {
-            "shock_steps": [1, 2]
-        }
-    }
+        "task_config": {"shock_steps": [1, 2]}
+    },
+    # Case 2: Perfect profit (most likely to produce 1.0)
+    {
+        "actions": [{"action_type": "BUY", "amount": 9000}] * 30,
+        "rewards": [5.0] * 30,
+        "portfolio_values": [10000 + i * 500 for i in range(31)],
+        "final_portfolio_value": 25000.0,
+        "initial_portfolio_value": 10000.0,
+        "steps_taken": 30,
+        "task_config": {"shock_steps": [1, 2]}
+    },
+    # Case 3: Total loss (most likely to produce 0.0)
+    {
+        "actions": [{"action_type": "SELL", "amount": 500}] * 10,
+        "rewards": [-5.0] * 10,
+        "portfolio_values": [10000 - i * 800 for i in range(11)],
+        "final_portfolio_value": 2000.0,
+        "initial_portfolio_value": 10000.0,
+        "steps_taken": 10,
+        "task_config": {"shock_steps": [1, 2]}
+    },
+    # Case 4: Empty log (edge case)
+    {
+        "actions": [],
+        "rewards": [],
+        "portfolio_values": [],
+        "final_portfolio_value": 10000.0,
+        "initial_portfolio_value": 10000.0,
+        "steps_taken": 0,
+        "task_config": {"shock_steps": [25, 55]}
+    },
+]
 
-tasks = ["bull_trend", "noisy_market", "shock_recovery"]
-
+tasks = ["easy", "medium", "hard"]
 all_pass = True
+
 for task in tasks:
     grader = get_grader(task)
-    log    = make_fake_log(task)
-    score  = grader(log)
-
-    strictly_valid = 0.0 < score < 1.0
-    status = "✅ PASS" if strictly_valid else "❌ FAIL"
-    print(f"{status} [{task}] score={score:.6f} | strictly in (0,1): {strictly_valid}")
-
-    if not strictly_valid:
-        all_pass = False
+    for i, log in enumerate(EDGE_CASE_LOGS):
+        score = grader(log)
+        valid = 0.0 < score < 1.0
+        status = "✅" if valid else "❌ FAIL"
+        print(f"{status} [{task}] case={i+1} score={score:.6f}")
+        if not valid:
+            all_pass = False
 
 print()
 if all_pass:
-    print("🟢 ALL GRADERS VALID — Safe to push and resubmit.")
+    print("🟢 ALL EDGE CASES PASS — Safe to push.")
 else:
-    print("🔴 GRADER SCORES OUT OF RANGE — Fix before submitting!")
+    print("🔴 SCORES OUT OF RANGE — Fix before pushing!")
