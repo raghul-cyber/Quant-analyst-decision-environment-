@@ -311,6 +311,10 @@ def state_endpoint(task: str = "easy"):
 def health():
     return {"status": "ok"}
 
+@app.get("/")
+def root():
+    return {"status": "ok", "app": "QADE Env API"}
+
 @app.get("/episodes")
 def episodes_endpoint(task: str = Query("easy")):
     if task not in envs:
