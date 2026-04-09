@@ -28,3 +28,4 @@ def get_task_config() -> TaskConfig:
         success_threshold=0.3,
         hints=["Two shocks incoming — protect capital", "Recovery after shocks is rewarded"]
     )
+

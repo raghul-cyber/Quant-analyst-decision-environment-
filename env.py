@@ -43,14 +43,14 @@ class QADEEnv:
                 small_noise = np.random.normal(0, 0.005)
                 prices[i] = prev * (1 + 0.005 + small_noise)
             elif self.task == "medium":
-                prices[i] = prev * (1 + np.random.normal(0.01, 0.015))
+                prices[i] = prev * (1 + np.random.normal(0, 05))
             elif self.task == "hard":
                 prices[i] = prev * (1 + np.random.normal(0.0, 0.02))
                 if i in self._shock_indices:
                     # Random shock event 15-25% drop
                     prices[i] = prices[i] * (1 - np.random.uniform(0.15, 0.25))
             else:
-                prices[i] = prev * (1 + np.random.normal(0, 0.01))
+                prices[i] = prev * (1 + np.random.normal(0, 0))
                 
         self.price_series = prices.tolist()
 
@@ -114,7 +114,7 @@ class QADEEnv:
         elif self.task == "medium":
             sentiment = local_rng.uniform(-1.0, 1.0)
         elif self.task == "hard":
-            sentiment = local_rng.uniform(-0.5, 0.5)
+            sentiment = local_rng.uniform(-0, 0)
             # Inverse / highly polarized shock correlations 
             if price_change_pct < -0.10:
                 sentiment = 1.0 
@@ -172,7 +172,7 @@ class QADEEnv:
     def step(self, action: QADEAction) -> StepResult:
         if self.done:
             obs = self._get_observation()
-            return StepResult(observation=obs, reward=0.01, done=True, info={"error": "Episode ended"})
+            return StepResult(observation=obs, reward=0, done=True, info={"error": "Episode ended"})
 
         obs_before = self._get_observation()
         
@@ -269,15 +269,16 @@ def reset_endpoint(task: str = "easy"):
     app.state.env = envs[normalized]
     return envs[normalized].reset()
 
-def _safe_r(r: float) -> float:
+def _safe_r(r: float) -> int:
     if r is None:
-        return 0.01
-    r = float(r)
-    if r <= 0.0:
-        return 0.01
-    if r >= 1.0:
-        return 0.99
-    return r
+        return 0
+    try:
+        r = float(r)
+    except Exception:
+        return 0
+    if r >= 1:
+        return 1
+    return 0
 
 @app.post("/step")
 def step_endpoint(action: QADEAction, task: str = Query("easy")):
@@ -296,7 +297,7 @@ def step_endpoint(action: QADEAction, task: str = Query("easy")):
     except Exception as e:
         return {
             "observation": {},
-            "reward": 0.01,    # ← safe fallback, never 0.0
+            "reward": 0,    # ← safe fallback, never 0.0
             "done": True,
             "info": {"error": str(e)}
         }
@@ -320,3 +321,4 @@ def episodes_endpoint(task: str = Query("easy")):
     if task not in envs:
         raise HTTPException(status_code=400, detail="Invalid task configuration mapping requested.")
     return envs[task].logger.get_last_episodes()
+

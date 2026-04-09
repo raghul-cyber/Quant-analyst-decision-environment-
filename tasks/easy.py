@@ -26,3 +26,4 @@ def get_task_config() -> TaskConfig:
         success_threshold=0.6,
         hints=["Price is trending up consistently", "Buy early and hold"]
     )
+

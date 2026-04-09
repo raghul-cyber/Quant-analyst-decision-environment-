@@ -103,7 +103,7 @@ class StepResult(BaseModel):
     observation: QADEObservation = Field(description="The new observation after the step")
     """The new observation after the step"""
     
-    reward: float = Field(default=0.01, description="The reward achieved this step")
+    reward: float = Field(default=0, description="The reward achieved this step")
     """The reward achieved this step"""
     
     done: bool = Field(description="Whether the episode is finished")
@@ -116,7 +116,8 @@ class StepResult(BaseModel):
     @classmethod
     def reward_never_zero(cls, v: float) -> float:
         if v == 0.0:
-            return 0.01
+            return 0
         if v == 1.0:
-            return 0.99
+            return 1
         return v
+

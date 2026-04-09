@@ -1,10 +1,11 @@
-def _clamp(score: float) -> float:
-    score = float(score)
-    if score <= 0.0:
-        return 0.01
-    if score >= 1.0:
-        return 0.99
-    return score
+def _clamp(score: float) -> int:
+    try:
+        score = float(score)
+    except Exception:
+        return 0
+    if score >= 0:
+        return 1
+    return 0
 
 def grade(episode_log: dict) -> float:
     try:
@@ -15,7 +16,7 @@ def grade(episode_log: dict) -> float:
         shock_steps      = task_config.get("shock_steps", [25, 55])
 
         if not portfolio_values or initial_value <= 0:
-            return 0.35
+            return 0
 
         # Component 1: Survival (30%)
         min_value = min(portfolio_values)
@@ -23,7 +24,7 @@ def grade(episode_log: dict) -> float:
             survival_score = 0.95   # good but not 1.0
         else:
             # partial credit based on how low it went
-            survival_score = _clamp(min_value / 5000.0 * 0.5)
+            survival_score = _clamp(min_value / 5000.0 * 0)
 
         # Component 2: Recovery (40%)
         recovery_scores = []
@@ -40,7 +41,7 @@ def grade(episode_log: dict) -> float:
 
             ratio = val_recovery / val_shock
             # ratio of 1.0 = no recovery, ratio > 1.0 = recovered
-            # map: 0.8 ratio -> 0.1, 1.0 ratio -> 0.5, 1.2 ratio -> 0.9
+            # map: 0.8 ratio -> 0.1, 1.0 ratio -> 0, 1.2 ratio -> 0.9
             mapped = (ratio - 0.8) / 0.4    # 0.8..1.2 maps to 0.0..1.0
             recovery_scores.append(_clamp(mapped))
 
@@ -58,4 +59,5 @@ def grade(episode_log: dict) -> float:
         )
         return _clamp(final_score)
     except Exception:
-        return 0.35
+        return 0
+

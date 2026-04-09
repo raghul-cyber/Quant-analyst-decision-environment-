@@ -19,10 +19,11 @@ def get_task_config() -> TaskConfig:
         initial_cash=10000.0,
         price_params={
             "start_price": 100.0,
-            "drift": 0.01,
-            "volatility": 0.018,
+            "drift": 0,
+            "volatility": 08,
             "shock_count": 0
         },
         success_threshold=0.45,
         hints=["Market is noisy — manage drawdown", "Don't overtrade"]
     )
+

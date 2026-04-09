@@ -61,3 +61,4 @@ if all_pass:
     print("🟢 ALL EDGE CASES PASS — Safe to push.")
 else:
     print("🔴 SCORES OUT OF RANGE — Fix before pushing!")
+

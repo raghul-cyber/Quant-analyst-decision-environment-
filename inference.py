@@ -30,18 +30,18 @@ def _safe_reward(r) -> float:
     try:
         r = float(r)
     except (TypeError, ValueError):
-        return 0.01
+        return 0
 
     # Handle NaN and Inf
     import math
     if math.isnan(r) or math.isinf(r):
-        return 0.01
+        return 0
 
     # Clamp to strictly open interval
     if r <= 0.0:
-        return 0.01
+        return 0
     if r >= 1.0:
-        return 0.99
+        return 1
 
     return r
 
@@ -53,7 +53,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error) -> None:
     error_val = error if error else "null"
     done_val  = str(done).lower()          # must be lowercase: true or false
     print(
-        f"[STEP] step={step} action={action} reward={safe_r:.2f} done={done_val} error={error_val}",
+        f"[STEP] step={step} action={action} reward={int(round(safe_r))} done={done_val} error={error_val}",
         flush=True
     )
 
@@ -66,22 +66,9 @@ def log_end(success: bool, steps: int, rewards: list) -> None:
     
     # If rewards list is empty, add a safe placeholder
     if not safe_rewards:
-        safe_rewards = [0.01]
+        safe_rewards = [0]
     
-    rewards_str = ",".join(f"{r:.2f}" for r in safe_rewards)
-    
-    # Final check: scan for forbidden values in the string
-    # 0.00 and 1.00 must never appear
-    rewards_str = rewards_str.replace(",0.00,", ",0.01,")
-    rewards_str = rewards_str.replace(",1.00,", ",0.99,")
-    if rewards_str.startswith("0.00"):
-        rewards_str = "0.01" + rewards_str[4:]
-    if rewards_str.startswith("1.00"):
-        rewards_str = "0.99" + rewards_str[4:]
-    if rewards_str.endswith(",0.00"):
-        rewards_str = rewards_str[:-4] + "0.01"
-    if rewards_str.endswith(",1.00"):
-        rewards_str = rewards_str[:-4] + "0.99"
+    rewards_str = ",".join(f"{int(round(r))}" for r in safe_rewards)
     
     print(
         f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
@@ -167,12 +154,12 @@ def main():
                         f"http://localhost:7860/step?task={env_task}",
                         json=action
                     ).json()
-                    reward   = _safe_reward(float(result.get("reward", 0.01)))
+                    reward   = _safe_reward(float(result.get("reward", 0)))
                     done     = bool(result.get("done", False))
                     error    = result.get("error", None)
                     obs      = result.get("observation", obs)
                 except Exception as e:
-                    reward = 0.01
+                    reward = 0
                     done   = False
                     error  = str(e)
 
@@ -197,7 +184,7 @@ def main():
                     "task_config": {"shock_steps": [25, 55]},
                 }
                 score = grader_func(episode_log)
-                print(f"GRADER SCORE [{env_task}]: {score:.4f}")
+                print(f"GRADER SCORE [{env_task}]: {int(round(score))}")
             except Exception as e:
                 print(f"[WARN] Grader error for {task_name}: {e}")
 
@@ -218,3 +205,4 @@ if __name__ == "__main__":
         # Still emit [END] if somehow missed
         print("[END] success=false steps=0 rewards=")
         sys.exit(0)   # exit 0 so validator sees clean exit
+

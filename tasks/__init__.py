@@ -13,3 +13,4 @@ def get_task(name: str) -> TaskConfig:
         return hard.get_task_config() # type: ignore
     else:
         raise ValueError(f"Unknown task name: {name}")
+

@@ -1,13 +1,16 @@
 from models import QADEAction, QADEObservation, QADEReward
 
-def _safe_reward(value: float) -> float:
+def _safe_reward(value: float) -> int:
     """
-    Ensure reward is never exactly 0.0.
-    Scores of 0.0 fail OpenEnv Phase 2 validation.
+    Ensure reward is exactly 0 or 1.
     """
-    if value == 0.0:
-        return 0.01
-    return float(value)
+    try:
+        val = float(value)
+    except Exception:
+        return 0
+    if val >= 1:
+        return 1
+    return 0
 
 class RewardCalculator:
     def __init__(self):
@@ -66,7 +69,7 @@ class RewardCalculator:
         if action.action_type == "BUY" and obs_before.portfolio_cash < 10.0:
             penalty += 0.2
             info_reasons.append("useless_buy")
-        elif action.action_type == "SELL" and obs_before.portfolio_shares < 0.01:
+        elif action.action_type == "SELL" and obs_before.portfolio_shares < 0:
             penalty += 0.2
             info_reasons.append("useless_sell")
 
@@ -75,8 +78,8 @@ class RewardCalculator:
             self.consecutive_wins += 1
             if self.consecutive_wins >= 3:
                 added_bonus = 0.1 * self.consecutive_wins
-                # Cap bonus at 0.5
-                added_bonus = min(added_bonus, 0.5)
+                # Cap bonus at 0
+                added_bonus = min(added_bonus, 0)
                 bonus += added_bonus
                 info_reasons.append(f"consistency_bonus({self.consecutive_wins}w)")
         else:
@@ -93,16 +96,16 @@ class RewardCalculator:
 
         # Final reward calculation
         # Step existence reward — ensures reward is NEVER exactly 0.0
-        STEP_BASE = 0.01   # tiny reward just for existing
+        STEP_BASE = 0   # tiny reward just for existing
 
         final_reward = STEP_BASE + base_reward - penalty + bonus
         final_reward = _safe_reward(final_reward)
 
         # Hard clamp — belt and suspenders
         if final_reward <= 0.0:
-            final_reward = 0.01
+            final_reward = 0
         if final_reward >= 1.0:
-            final_reward = 0.99
+            final_reward = 1
 
         # Format info string
         info_str = ", ".join(info_reasons) if info_reasons else "normal_step"
@@ -114,3 +117,4 @@ class RewardCalculator:
             bonus=bonus,
             info=info_str
         )
+

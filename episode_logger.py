@@ -44,3 +44,4 @@ class EpisodeLogger:
     def get_last_episodes(self) -> List[Dict[str, Any]]:
         with self.lock:
             return deepcopy(self.episodes)
+
