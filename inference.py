@@ -197,7 +197,7 @@ def main():
                     "task_config": {"shock_steps": [25, 55]},
                 }
                 score = grader_func(episode_log)
-                print(f"GRADER SCORE [{task_name}]: {score:.4f}")
+                print(f"GRADER SCORE [{env_task}]: {score:.4f}")
             except Exception as e:
                 print(f"[WARN] Grader error for {task_name}: {e}")
 
