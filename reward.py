@@ -78,8 +78,8 @@ class RewardCalculator:
             self.consecutive_wins += 1
             if self.consecutive_wins >= 3:
                 added_bonus = 0.1 * self.consecutive_wins
-                # Cap bonus at 0
-                added_bonus = min(added_bonus, 0)
+                # Cap bonus at 0.5
+                added_bonus = min(added_bonus, 0.5)
                 bonus += added_bonus
                 info_reasons.append(f"consistency_bonus({self.consecutive_wins}w)")
         else:

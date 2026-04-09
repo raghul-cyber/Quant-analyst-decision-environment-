@@ -43,14 +43,14 @@ class QADEEnv:
                 small_noise = np.random.normal(0, 0.005)
                 prices[i] = prev * (1 + 0.005 + small_noise)
             elif self.task == "medium":
-                prices[i] = prev * (1 + np.random.normal(0, 05))
+                prices[i] = prev * (1 + np.random.normal(0.001, 0.015))
             elif self.task == "hard":
                 prices[i] = prev * (1 + np.random.normal(0.0, 0.02))
                 if i in self._shock_indices:
                     # Random shock event 15-25% drop
                     prices[i] = prices[i] * (1 - np.random.uniform(0.15, 0.25))
             else:
-                prices[i] = prev * (1 + np.random.normal(0, 0))
+                prices[i] = prev * (1 + np.random.normal(0, 0.01))
                 
         self.price_series = prices.tolist()
 
