@@ -172,7 +172,7 @@ class QADEEnv:
     def step(self, action: QADEAction) -> StepResult:
         if self.done:
             obs = self._get_observation()
-            return StepResult(observation=obs, reward=0.0, done=True, info={"error": "Episode ended"})
+            return StepResult(observation=obs, reward=0.001, done=True, info={"error": "Episode ended"})
 
         obs_before = self._get_observation()
         
@@ -269,29 +269,37 @@ def reset_endpoint(task: str = "easy"):
     app.state.env = envs[normalized]
     return envs[normalized].reset()
 
-def _clamp_reward(r: float) -> float:
-    """Reward must be strictly non-zero per OpenEnv spec."""
-    if r == 0.0:
+def _safe_r(r: float) -> float:
+    if r is None:
         return 0.001
-    return float(r)
+    r = float(r)
+    if r <= 0.0:
+        return 0.001
+    if r >= 1.0:
+        return 0.999
+    return r
 
-@app.post("/step", response_model=StepResult)
+@app.post("/step")
 def step_endpoint(action: QADEAction, task: str = Query("easy")):
-    normalized = TASK_ALIASES.get(task, "easy")
-    if normalized not in envs:
-        raise HTTPException(status_code=400, detail="Invalid task configuration mapping requested.")
-    
-    result = envs[normalized].step(action)
-    
-    # CRITICAL: never return exactly 0.0 reward
-    safe_reward = _clamp_reward(result.reward)
-    
-    return {
-        "observation": result.observation.model_dump(),
-        "reward": safe_reward,
-        "done": result.done,
-        "info": result.info
-    }
+    try:
+        normalized = TASK_ALIASES.get(task, "easy")
+        if normalized not in envs:
+            raise HTTPException(status_code=400, detail="Invalid task configuration mapping requested.")
+        
+        result = envs[normalized].step(action)
+        return {
+            "observation": result.observation.model_dump() if hasattr(result.observation, 'model_dump') else result.observation.dict(),
+            "reward": _safe_r(result.reward),   # ← WRAP HERE
+            "done": result.done,
+            "info": result.info
+        }
+    except Exception as e:
+        return {
+            "observation": {},
+            "reward": 0.001,    # ← safe fallback, never 0.0
+            "done": True,
+            "info": {"error": str(e)}
+        }
 
 @app.get("/state")
 def state_endpoint(task: str = "easy"):

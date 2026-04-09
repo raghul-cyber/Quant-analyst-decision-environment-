@@ -92,8 +92,17 @@ class RewardCalculator:
             self.consecutive_holds = 0
 
         # Final reward calculation
-        final_reward = base_reward - penalty + bonus
+        # Step existence reward — ensures reward is NEVER exactly 0.0
+        STEP_BASE = 0.001   # tiny reward just for existing
+
+        final_reward = STEP_BASE + base_reward - penalty + bonus
         final_reward = _safe_reward(final_reward)
+
+        # Hard clamp — belt and suspenders
+        if final_reward <= 0.0:
+            final_reward = 0.001
+        if final_reward >= 1.0:
+            final_reward = 0.999
 
         # Format info string
         info_str = ", ".join(info_reasons) if info_reasons else "normal_step"
