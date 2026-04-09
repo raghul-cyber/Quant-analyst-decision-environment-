@@ -43,7 +43,7 @@ class QADEEnv:
                 small_noise = np.random.normal(0, 0.005)
                 prices[i] = prev * (1 + 0.005 + small_noise)
             elif self.task == "medium":
-                prices[i] = prev * (1 + np.random.normal(0.001, 0.015))
+                prices[i] = prev * (1 + np.random.normal(0.01, 0.015))
             elif self.task == "hard":
                 prices[i] = prev * (1 + np.random.normal(0.0, 0.02))
                 if i in self._shock_indices:
@@ -172,7 +172,7 @@ class QADEEnv:
     def step(self, action: QADEAction) -> StepResult:
         if self.done:
             obs = self._get_observation()
-            return StepResult(observation=obs, reward=0.001, done=True, info={"error": "Episode ended"})
+            return StepResult(observation=obs, reward=0.01, done=True, info={"error": "Episode ended"})
 
         obs_before = self._get_observation()
         
@@ -271,12 +271,12 @@ def reset_endpoint(task: str = "easy"):
 
 def _safe_r(r: float) -> float:
     if r is None:
-        return 0.001
+        return 0.01
     r = float(r)
     if r <= 0.0:
-        return 0.001
+        return 0.01
     if r >= 1.0:
-        return 0.999
+        return 0.99
     return r
 
 @app.post("/step")
@@ -296,7 +296,7 @@ def step_endpoint(action: QADEAction, task: str = Query("easy")):
     except Exception as e:
         return {
             "observation": {},
-            "reward": 0.001,    # ← safe fallback, never 0.0
+            "reward": 0.01,    # ← safe fallback, never 0.0
             "done": True,
             "info": {"error": str(e)}
         }

@@ -49,7 +49,7 @@ def check_rewards_in_end_line(end_line: str) -> bool:
 # Simulate a mock [END] line with your actual reward function
 # Replace this with actual output from running inference.py
 test_cases = [
-    "[END] success=true steps=5 rewards=0.001,0.234,0.567,0.891,0.123",  # should PASS
+    "[END] success=true steps=5 rewards=0.01,0.234,0.567,0.891,0.123",  # should PASS
     "[END] success=true steps=3 rewards=0.00,0.50,0.75",                  # should FAIL
     "[END] success=true steps=3 rewards=1.00,0.50,0.75",                  # should FAIL
     "[END] success=false steps=0 rewards=",                                 # edge case

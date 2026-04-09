@@ -1,9 +1,9 @@
 def _clamp(score: float) -> float:
     score = float(score)
     if score <= 0.0:
-        return 0.001
+        return 0.01
     if score >= 1.0:
-        return 0.999
+        return 0.99
     return score
 
 def grade(episode_log: dict) -> float:
@@ -31,7 +31,7 @@ def grade(episode_log: dict) -> float:
                 dd           = (peak - val) / peak
                 max_drawdown = max(max_drawdown, dd)
 
-        # 15% drawdown = 0.001 score
+        # 15% drawdown = 0.01 score
         drawdown_score = 1.0 - (max_drawdown / 0.15)
         drawdown_score = _clamp(drawdown_score)
 

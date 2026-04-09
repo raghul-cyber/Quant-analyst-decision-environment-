@@ -1,9 +1,9 @@
 def _clamp(score: float) -> float:
     score = float(score)
     if score <= 0.0:
-        return 0.001
+        return 0.01
     if score >= 1.0:
-        return 0.999
+        return 0.99
     return score
 
 def grade(episode_log: dict) -> float:

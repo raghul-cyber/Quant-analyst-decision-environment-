@@ -6,7 +6,7 @@ def _safe_reward(value: float) -> float:
     Scores of 0.0 fail OpenEnv Phase 2 validation.
     """
     if value == 0.0:
-        return 0.001
+        return 0.01
     return float(value)
 
 class RewardCalculator:
@@ -93,16 +93,16 @@ class RewardCalculator:
 
         # Final reward calculation
         # Step existence reward — ensures reward is NEVER exactly 0.0
-        STEP_BASE = 0.001   # tiny reward just for existing
+        STEP_BASE = 0.01   # tiny reward just for existing
 
         final_reward = STEP_BASE + base_reward - penalty + bonus
         final_reward = _safe_reward(final_reward)
 
         # Hard clamp — belt and suspenders
         if final_reward <= 0.0:
-            final_reward = 0.001
+            final_reward = 0.01
         if final_reward >= 1.0:
-            final_reward = 0.999
+            final_reward = 0.99
 
         # Format info string
         info_str = ", ".join(info_reasons) if info_reasons else "normal_step"

@@ -30,18 +30,18 @@ def _safe_reward(r) -> float:
     try:
         r = float(r)
     except (TypeError, ValueError):
-        return 0.001
+        return 0.01
 
     # Handle NaN and Inf
     import math
     if math.isnan(r) or math.isinf(r):
-        return 0.001
+        return 0.01
 
     # Clamp to strictly open interval
     if r <= 0.0:
-        return 0.001
+        return 0.01
     if r >= 1.0:
-        return 0.999
+        return 0.99
 
     return r
 
@@ -66,22 +66,22 @@ def log_end(success: bool, steps: int, rewards: list) -> None:
     
     # If rewards list is empty, add a safe placeholder
     if not safe_rewards:
-        safe_rewards = [0.001]
+        safe_rewards = [0.01]
     
     rewards_str = ",".join(f"{r:.2f}" for r in safe_rewards)
     
     # Final check: scan for forbidden values in the string
     # 0.00 and 1.00 must never appear
-    rewards_str = rewards_str.replace(",0.00,", ",0.001,")
-    rewards_str = rewards_str.replace(",1.00,", ",0.999,")
+    rewards_str = rewards_str.replace(",0.00,", ",0.01,")
+    rewards_str = rewards_str.replace(",1.00,", ",0.99,")
     if rewards_str.startswith("0.00"):
-        rewards_str = "0.001" + rewards_str[4:]
+        rewards_str = "0.01" + rewards_str[4:]
     if rewards_str.startswith("1.00"):
-        rewards_str = "0.999" + rewards_str[4:]
+        rewards_str = "0.99" + rewards_str[4:]
     if rewards_str.endswith(",0.00"):
-        rewards_str = rewards_str[:-4] + "0.001"
+        rewards_str = rewards_str[:-4] + "0.01"
     if rewards_str.endswith(",1.00"):
-        rewards_str = rewards_str[:-4] + "0.999"
+        rewards_str = rewards_str[:-4] + "0.99"
     
     print(
         f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
@@ -167,12 +167,12 @@ def main():
                         f"http://localhost:7860/step?task={env_task}",
                         json=action
                     ).json()
-                    reward   = _safe_reward(float(result.get("reward", 0.001)))
+                    reward   = _safe_reward(float(result.get("reward", 0.01)))
                     done     = bool(result.get("done", False))
                     error    = result.get("error", None)
                     obs      = result.get("observation", obs)
                 except Exception as e:
-                    reward = 0.001
+                    reward = 0.01
                     done   = False
                     error  = str(e)
 
