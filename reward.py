@@ -1,16 +1,16 @@
 from models import QADEAction, QADEObservation, QADEReward
 
-def _safe_reward(value: float) -> int:
+def _safe_reward(value: float) -> float:
     """
-    Ensure reward is exactly 0 or 1.
+    Ensure reward is strictly between 0 and 1.
     """
     try:
         val = float(value)
     except Exception:
-        return 0
-    if val >= 1:
-        return 1
-    return 0
+        return 0.01
+    if val <= 0.0: return 0.01
+    if val >= 1.0: return 0.99
+    return val
 
 class RewardCalculator:
     def __init__(self):
@@ -96,16 +96,16 @@ class RewardCalculator:
 
         # Final reward calculation
         # Step existence reward — ensures reward is NEVER exactly 0.0
-        STEP_BASE = 0   # tiny reward just for existing
+        STEP_BASE = 0.01   # tiny reward just for existing
 
         final_reward = STEP_BASE + base_reward - penalty + bonus
         final_reward = _safe_reward(final_reward)
 
         # Hard clamp — belt and suspenders
         if final_reward <= 0.0:
-            final_reward = 0
+            final_reward = 0.01
         if final_reward >= 1.0:
-            final_reward = 1
+            final_reward = 0.99
 
         # Format info string
         info_str = ", ".join(info_reasons) if info_reasons else "normal_step"

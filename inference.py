@@ -24,25 +24,18 @@ Respond ONLY with valid JSON in this exact format:
 def _safe_reward(r) -> float:
     """
     Sanitize reward so it is NEVER exactly 0.0 or 1.0.
-    The OpenEnv validator reads rewards from [END] stdout line
-    and rejects any value == 0.0 or == 1.0 exactly.
     """
     try:
         r = float(r)
     except (TypeError, ValueError):
-        return 0
+        return 0.01
 
-    # Handle NaN and Inf
     import math
     if math.isnan(r) or math.isinf(r):
-        return 0
+        return 0.01
 
-    # Clamp to strictly open interval
-    if r <= 0.0:
-        return 0
-    if r >= 1.0:
-        return 1
-
+    if r <= 0.0: return 0.01
+    if r >= 1.0: return 0.99
     return r
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -53,7 +46,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error) -> None:
     error_val = error if error else "null"
     done_val  = str(done).lower()          # must be lowercase: true or false
     print(
-        f"[STEP] step={step} action={action} reward={int(round(safe_r))} done={done_val} error={error_val}",
+        f"[STEP] step={step} action={action} reward={safe_r:.2f} done={done_val} error={error_val}",
         flush=True
     )
 
@@ -66,9 +59,9 @@ def log_end(success: bool, steps: int, rewards: list) -> None:
     
     # If rewards list is empty, add a safe placeholder
     if not safe_rewards:
-        safe_rewards = [0]
+        safe_rewards = [0.01]
     
-    rewards_str = ",".join(f"{int(round(r))}" for r in safe_rewards)
+    rewards_str = ",".join(f"{sr:.2f}" for sr in safe_rewards)
     
     print(
         f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
@@ -184,7 +177,7 @@ def main():
                     "task_config": {"shock_steps": [25, 55]},
                 }
                 score = grader_func(episode_log)
-                print(f"GRADER SCORE [{env_task}]: {int(round(score))}")
+                print(f"GRADER SCORE [{env_task}]: {score:.4f}")
             except Exception as e:
                 print(f"[WARN] Grader error for {task_name}: {e}")
 

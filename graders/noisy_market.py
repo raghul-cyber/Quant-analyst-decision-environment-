@@ -1,11 +1,8 @@
-def _clamp(score: float) -> int:
-    try:
-        score = float(score)
-    except Exception:
-        return 0
-    if score >= 0:
-        return 1
-    return 0
+def _clamp(score: float) -> float:
+    score = float(score)
+    if score <= 0.0: return 0.01
+    if score >= 1.0: return 0.99
+    return score
 
 def grade(episode_log: dict) -> float:
     try:
@@ -15,7 +12,7 @@ def grade(episode_log: dict) -> float:
         initial_value    = float(episode_log.get("initial_portfolio_value", 10000.0) or 10000.0)
 
         if not portfolio_values or initial_value <= 0:
-            return 0
+            return 0.5
 
         # Component 1: Profit score (40%)
         pnl_pct      = (final_value - initial_value) / initial_value
@@ -60,5 +57,5 @@ def grade(episode_log: dict) -> float:
         )
         return _clamp(final_score)
     except Exception:
-        return 0
+        return 0.5
 

@@ -217,9 +217,11 @@ class QADEEnv:
             ep_log = self.logger.end_episode()
             info_dict["episode_log"] = ep_log
         
+        # Step existence reward — ensures reward is NEVER exactly 0.0
+        STEP_BASE = 0.01
         return StepResult(
             observation=obs_after,
-            reward=reward.value,
+            reward=max(STEP_BASE, reward.value),
             done=self.done,
             info=info_dict
         )
@@ -269,16 +271,16 @@ def reset_endpoint(task: str = "easy"):
     app.state.env = envs[normalized]
     return envs[normalized].reset()
 
-def _safe_r(r: float) -> int:
+def _safe_r(r: float) -> float:
     if r is None:
-        return 0
+        return 0.01
     try:
         r = float(r)
     except Exception:
-        return 0
-    if r >= 1:
-        return 1
-    return 0
+        return 0.01
+    if r <= 0.0: return 0.01
+    if r >= 1.0: return 0.99
+    return r
 
 @app.post("/step")
 def step_endpoint(action: QADEAction, task: str = Query("easy")):
@@ -290,14 +292,14 @@ def step_endpoint(action: QADEAction, task: str = Query("easy")):
         result = envs[normalized].step(action)
         return {
             "observation": result.observation.model_dump() if hasattr(result.observation, 'model_dump') else result.observation.dict(),
-            "reward": _safe_r(result.reward),   # ← WRAP HERE
+            "reward": _safe_r(result.reward),
             "done": result.done,
             "info": result.info
         }
     except Exception as e:
         return {
             "observation": {},
-            "reward": 0,    # ← safe fallback, never 0.0
+            "reward": 0.01,
             "done": True,
             "info": {"error": str(e)}
         }
