@@ -32,11 +32,11 @@ def check_rewards_in_end_line(end_line: str) -> bool:
             all_ok = False
             continue
 
-        if r == 0.0:
-            print(f"❌ FORBIDDEN: reward is exactly 0.0")
+        if r <= 0.0:
+            print(f"❌ FORBIDDEN: reward is <= 0.0 (exact {r})")
             all_ok = False
-        elif r == 1.0:
-            print(f"❌ FORBIDDEN: reward is exactly 1.0")
+        elif r >= 1.0:
+            print(f"❌ FORBIDDEN: reward is >= 1.0 (exact {r})")
             all_ok = False
         elif not (0.0 < r < 1.0):
             print(f"❌ OUT OF RANGE: reward {r} not in (0, 1)")

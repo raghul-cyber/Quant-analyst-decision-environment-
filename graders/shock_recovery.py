@@ -1,8 +1,4 @@
-def _clamp(score: float) -> float:
-    score = float(score)
-    if score <= 0.0: return 0.01
-    if score >= 1.0: return 0.99
-    return score
+from graders.utils import safe_score
 
 def grade(episode_log: dict) -> float:
     try:
@@ -13,7 +9,7 @@ def grade(episode_log: dict) -> float:
         shock_steps      = task_config.get("shock_steps", [25, 55])
 
         if not portfolio_values or initial_value <= 0:
-            return 0.5
+            return 0.001.5
 
         # Component 1: Survival (30%)
         min_value = min(portfolio_values)
@@ -21,7 +17,7 @@ def grade(episode_log: dict) -> float:
             survival_score = 0.95   # good but not 1.0
         else:
             # partial credit based on how low it went
-            survival_score = _clamp(min_value / 5000.0 * 0.5)
+            survival_score = safe_score(min_value / 5000.0 * 0.5)
 
         # Component 2: Recovery (40%)
         recovery_scores = []
@@ -40,21 +36,23 @@ def grade(episode_log: dict) -> float:
             # ratio of 1.0 = no recovery, ratio > 1.0 = recovered
             # map: 0.8 ratio -> 0.1, 1.0 ratio -> 0.5, 1.2 ratio -> 0.9
             mapped = (ratio - 0.8) / 0.4    # 0.8..1.2 maps to 0.0..1.0
-            recovery_scores.append(_clamp(mapped))
+            recovery_scores.append(safe_score(mapped))
 
         recovery_score = sum(recovery_scores) / max(len(recovery_scores), 1)
-        recovery_score = _clamp(recovery_score)
+        recovery_score = safe_score(recovery_score)
 
         # Component 3: Final PnL (30%)
         pnl_pct   = (final_value - initial_value) / initial_value
-        pnl_score = _clamp(pnl_pct / 0.03)
+        pnl_score = safe_score(pnl_pct / 0.03)
 
         final_score = (
             0.30 * survival_score +
             0.40 * recovery_score +
             0.30 * pnl_score
         )
-        return _clamp(final_score)
+        return safe_score(final_score)
     except Exception:
-        return 0
+        return 0.001
+
+
 

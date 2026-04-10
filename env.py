@@ -43,14 +43,14 @@ class QADEEnv:
                 small_noise = np.random.normal(0, 0.005)
                 prices[i] = prev * (1 + 0.005 + small_noise)
             elif self.task == "medium":
-                prices[i] = prev * (1 + np.random.normal(0.001, 0.015))
+                prices[i] = prev * (1 + np.random.normal(0.001, 0.0015))
             elif self.task == "hard":
                 prices[i] = prev * (1 + np.random.normal(0.0, 0.02))
                 if i in self._shock_indices:
                     # Random shock event 15-25% drop
                     prices[i] = prices[i] * (1 - np.random.uniform(0.15, 0.25))
             else:
-                prices[i] = prev * (1 + np.random.normal(0, 0.01))
+                prices[i] = prev * (1 + np.random.normal(0, 0.001))
                 
         self.price_series = prices.tolist()
 
@@ -218,7 +218,7 @@ class QADEEnv:
             info_dict["episode_log"] = ep_log
         
         # Step existence reward — ensures reward is NEVER exactly 0.0
-        STEP_BASE = 0.01
+        STEP_BASE = 0.001
         return StepResult(
             observation=obs_after,
             reward=max(STEP_BASE, reward.value),
@@ -273,13 +273,13 @@ def reset_endpoint(task: str = "easy"):
 
 def _safe_r(r: float) -> float:
     if r is None:
-        return 0.01
+        return 0.001
     try:
         r = float(r)
     except Exception:
-        return 0.01
-    if r <= 0.0: return 0.01
-    if r >= 1.0: return 0.99
+        return 0.001
+    if r <= 0.0: return 0.001
+    if r >= 1.0: return 0.999
     return r
 
 @app.post("/step")
@@ -299,7 +299,7 @@ def step_endpoint(action: QADEAction, task: str = Query("easy")):
     except Exception as e:
         return {
             "observation": {},
-            "reward": 0.01,
+            "reward": 0.001,
             "done": True,
             "info": {"error": str(e)}
         }
@@ -323,4 +323,5 @@ def episodes_endpoint(task: str = Query("easy")):
     if task not in envs:
         raise HTTPException(status_code=400, detail="Invalid task configuration mapping requested.")
     return envs[task].logger.get_last_episodes()
+
 

@@ -1,8 +1,4 @@
-def _clamp(score: float) -> float:
-    score = float(score)
-    if score <= 0.0: return 0.01
-    if score >= 1.0: return 0.99
-    return score
+from graders.utils import safe_score
 
 def grade(episode_log: dict) -> float:
     try:
@@ -13,12 +9,12 @@ def grade(episode_log: dict) -> float:
 
         # Safety: if no data at all, return mid-range score
         if not portfolio_values or initial_value <= 0:
-            return 0.5
+            return 0.001.5
 
         # Component 1: Return score (50%)
         pnl_pct      = (final_value - initial_value) / initial_value
         return_score  = pnl_pct / 0.10   # 10% gain = 1.0
-        return_score  = _clamp(return_score)
+        return_score  = safe_score(return_score)
 
         # Component 2: Direction accuracy (50%)
         correct = 0
@@ -46,11 +42,13 @@ def grade(episode_log: dict) -> float:
             direction_score = 0.5   # safe mid-range fallback
         else:
             direction_score = correct / total
-            direction_score = _clamp(direction_score)
+            direction_score = safe_score(direction_score)
 
         final_score = 0.5 * return_score + 0.5 * direction_score
-        return _clamp(final_score)
+        return safe_score(final_score)
     except Exception:
         # Prevent validator from substituting 0.0 on crash
-        return 0.5
+        return 0.001.5
+
+
 

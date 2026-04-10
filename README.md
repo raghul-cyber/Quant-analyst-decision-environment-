@@ -44,7 +44,7 @@ The environment emits a state mapping of `QADEObservation` for decision making:
 | `reasoning` | `str` | The internal chain of logic validating the intent (for traceability). |
 
 ## Reward Function
-Computed inside a strict `[-5.0, 5.0]` clipping range based directly on deterministic events isolated per frame:
+Computed inside a strict exclusive `(0.001, 0.999)` clipping range (normalized from original `[-5.0, 5.0]` logic) based directly on deterministic events isolated per frame:
 * **Profit Signal:** Basic % change of the active portfolio normalized `((pnl_delta / obs_before) * 100.0)`.
 * **Overtrading Penalty:** Evaluates `BUY/SELL` activity strictly enforcing small friction `-0.05` drag to constrain chaos.
 * **Drawdown Penalty:** Penalizes large distance shifts under historical portfolio peaks heavily if exceeding `0.05`.
@@ -65,7 +65,7 @@ QADE natively generates three core baseline progression environments dictating t
   - *Good Behavior:* Reacting to sudden drops logically by catching profit bottoms directly absorbing volatility effectively and rebounding safely against fail limits.
 
 ## Grader Rubrics
-Execution evaluation computes directly outside of Step iteration using normalized episode data:
+Execution evaluation computes directly outside of Step iteration using normalized episode data. All final task scores are strictly clamped to the exclusive interval `(0.001, 0.999)` for validator compliance:
 
 * **EASY GRADER (`bull_trend`)**: 
   - Yields 50% max score exclusively to final `pnl_pct` matching at least `10%`.

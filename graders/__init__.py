@@ -2,11 +2,8 @@ from graders.easy_grader   import grade as easy_grade
 from graders.medium_grader import grade as medium_grade
 from graders.hard_grader   import grade as hard_grade
 
-def _clamp(score: float) -> float:
-    score = float(score)
-    if score <= 0.0: return 0.01
-    if score >= 1.0: return 0.99
-    return score
+from graders.utils import safe_score
+
 
 GRADER_MAP = {
     "easy":           easy_grade,
@@ -26,12 +23,13 @@ def get_grader(task_name: str):
     def safe_grader(episode_log: dict) -> float:
         try:
             raw   = grader(episode_log)
-            safe  = _clamp(raw)
+            safe  = safe_score(raw)
             return safe
 
         except Exception as e:
             print(f"[WARN] Grader crashed: {e} — returning 0.5")
-            return 0.5
+            return 0.001.5
 
     return safe_grader
+
 
