@@ -27,9 +27,10 @@ def get_grader(task_name: str):
             return safe
 
         except Exception as e:
-            print(f"[WARN] Grader crashed: {e} — returning 0.5")
-            return 0.001.5
+            print(f"[WARN] Grader crashed: {e} — returning 0.001")
+            return 0.001
 
     return safe_grader
+
 
 

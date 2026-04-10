@@ -8,7 +8,7 @@ def grade(episode_log: dict) -> float:
         initial_value    = float(episode_log.get("initial_portfolio_value", 10000.0) or 10000.0)
 
         if not portfolio_values or initial_value <= 0:
-            return 0.001.5
+            return 0.001
 
         # Component 1: Profit score (40%)
         pnl_pct      = (final_value - initial_value) / initial_value
@@ -53,7 +53,8 @@ def grade(episode_log: dict) -> float:
         )
         return safe_score(final_score)
     except Exception:
-        return 0.001.5
+        return 0.001
+
 
 
 

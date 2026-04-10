@@ -9,7 +9,7 @@ def grade(episode_log: dict) -> float:
         shock_steps      = task_config.get("shock_steps", [25, 55])
 
         if not portfolio_values or initial_value <= 0:
-            return 0.001.5
+            return 0.001
 
         # Component 1: Survival (30%)
         min_value = min(portfolio_values)
@@ -53,6 +53,7 @@ def grade(episode_log: dict) -> float:
         return safe_score(final_score)
     except Exception:
         return 0.001
+
 
 
 
