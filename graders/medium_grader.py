@@ -8,7 +8,7 @@ def grade(episode_log: dict) -> float:
         initial_value    = float(episode_log.get("initial_portfolio_value", 10000.0) or 10000.0)
 
         if not portfolio_values or initial_value <= 0:
-            return 0.001
+            return 1e-6
 
         # Component 1: Profit score (40%)
         pnl_pct      = (final_value - initial_value) / initial_value
@@ -26,7 +26,7 @@ def grade(episode_log: dict) -> float:
                 max_drawdown = max(max_drawdown, dd)
 
         # 15% drawdown = 0 score
-        drawdown_score = 1.0 - (max_drawdown / 0.15)
+        drawdown_score = 0.999999 - (max_drawdown / 0.15)
         drawdown_score = safe_score(drawdown_score)
 
         # Component 3: Trade efficiency (20%)
@@ -44,7 +44,7 @@ def grade(episode_log: dict) -> float:
                 n_trades += 1
                 
         # cap at 20 trades, always non-zero
-        efficiency_score = safe_score(1.0 - (n_trades / 20))
+        efficiency_score = safe_score(0.999999 - (n_trades / 20))
 
         final_score = (
             0.40 * profit_score +
@@ -53,7 +53,8 @@ def grade(episode_log: dict) -> float:
         )
         return safe_score(final_score)
     except Exception:
-        return 0.001
+        return 1e-6
+
 
 
 

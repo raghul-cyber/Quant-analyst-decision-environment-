@@ -10,11 +10,11 @@ def grade(episode_log: dict) -> float:
 
         # Safety: if no data at all, return mid-range score
         if not portfolio_values or initial_value <= 0:
-            return 0.001
+            return 1e-6
 
         # Component 1: Return score (50%)
         pnl_pct      = (final_value - initial_value) / initial_value
-        return_score  = pnl_pct / 0.10   # 10% gain = 1.0
+        return_score  = pnl_pct / 0.10   # 10% gain = 0.999999
         return_score  = safe_score(return_score)
 
         # Component 2: Direction accuracy (50%)
@@ -49,7 +49,8 @@ def grade(episode_log: dict) -> float:
         return safe_score(final_score)
     except Exception:
         # Prevent validator from substituting 0.0 on crash
-        return 0.001
+        return 1e-6
+
 
 
 

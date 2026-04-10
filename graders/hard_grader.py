@@ -9,12 +9,12 @@ def grade(episode_log: dict) -> float:
         shock_steps      = task_config.get("shock_steps", [25, 55])
 
         if not portfolio_values or initial_value <= 0:
-            return 0.001
+            return 1e-6
 
         # Component 1: Survival (30%)
         min_value = min(portfolio_values)
         if min_value >= 5000.0:
-            survival_score = 0.95   # good but not 1.0
+            survival_score = 0.95   # good but not 0.999999
         else:
             # partial credit based on how low it went
             survival_score = safe_score(min_value / 5000.0 * 0.5)
@@ -33,9 +33,9 @@ def grade(episode_log: dict) -> float:
                 continue
 
             ratio = val_recovery / val_shock
-            # ratio of 1.0 = no recovery, ratio > 1.0 = recovered
-            # map: 0.8 ratio -> 0.1, 1.0 ratio -> 0.5, 1.2 ratio -> 0.9
-            mapped = (ratio - 0.8) / 0.4    # 0.8..1.2 maps to 0.0..1.0
+            # ratio of 0.999999 = no recovery, ratio > 0.999999 = recovered
+            # map: 0.8 ratio -> 0.1, 0.999999 ratio -> 0.5, 1.2 ratio -> 0.9
+            mapped = (ratio - 0.8) / 0.4    # 0.8..1.2 maps to 0.0..0.999999
             recovery_scores.append(safe_score(mapped))
 
         recovery_score = sum(recovery_scores) / max(len(recovery_scores), 1)
@@ -52,7 +52,8 @@ def grade(episode_log: dict) -> float:
         )
         return safe_score(final_score)
     except Exception:
-        return 0.001
+        return 1e-6
+
 
 
 
