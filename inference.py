@@ -28,14 +28,14 @@ def _safe_reward(r) -> float:
     try:
         r = float(r)
     except (TypeError, ValueError):
-        return 0.000001
+        return 0.01
 
     import math
     if math.isnan(r) or math.isinf(r):
-        return 0.000001
+        return 0.01
 
-    if r <= 0.0: return 0.000001
-    if r >= 1.0: return 0.999999
+    if r <= 0.0: return 0.01
+    if r >= 1.0: return 0.99
     return r
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -46,7 +46,7 @@ def log_step(step: int, action: str, reward: float, done: bool, error) -> None:
     error_val = error if error else "null"
     done_val  = str(done).lower()          # must be lowercase: true or false
     print(
-        f"[STEP] step={step} action={action} reward={safe_r:.2f} done={done_val} error={error_val}",
+        f"[STEP] step={step} action={action} reward={safe_r:.6f} done={done_val} error={error_val}",
         flush=True
     )
 
@@ -59,9 +59,9 @@ def log_end(success: bool, steps: int, rewards: list) -> None:
     
     # If rewards list is empty, add a safe placeholder
     if not safe_rewards:
-        safe_rewards = [0.000001]
+        safe_rewards = [0.01]
     
-    rewards_str = ",".join(f"{sr:.2f}" for sr in safe_rewards)
+    rewards_str = ",".join(f"{sr:.6f}" for sr in safe_rewards)
     
     print(
         f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
@@ -198,6 +198,7 @@ if __name__ == "__main__":
         # Still emit [END] if somehow missed
         print("[END] success=false steps=0 rewards=")
         sys.exit(0)   # exit 0 so validator sees clean exit
+
 
 
 

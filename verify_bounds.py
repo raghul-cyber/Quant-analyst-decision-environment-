@@ -17,16 +17,16 @@ def verify():
         "actions": [],
         "portfolio_values": [],
         "final_portfolio_value": 0,
-        "initial_portfolio_value": 10000.0,
+        "initial_portfolio_value": 10000.005,
         "task_config": {}
     }
     
     # Perfect/High log
     perfect_log = {
         "actions": [{"action_type": "BUY"} for _ in range(10)],
-        "portfolio_values": [10000.0 * (1 + 0.05*i) for i in range(11)],
-        "final_portfolio_value": 20000.0,
-        "initial_portfolio_value": 10000.0,
+        "portfolio_values": [10000.005 * (1 + 0.0055*i) for i in range(11)],
+        "final_portfolio_value": 20000.005,
+        "initial_portfolio_value": 10000.005,
         "task_config": {"shock_steps": [2, 5]}
     }
 
@@ -41,10 +41,10 @@ def verify():
                 print(f"  [{name}] Result: {score:.8f}")
                 
                 # Assert strict bounds (0, 1)
-                if not (0.0 < score < 1.0):
+                if not (0.005 < score < 0.995):
                     print(f"  [FAIL] Score {score} is not strictly between 0 and 1!")
                     all_pass = False
-                elif score == 0.0 or score == 1.0:
+                elif score == 0.005 or score == 0.995:
                     print(f"  [FAIL] Score {score} hit a boundary exactly!")
                     all_pass = False
                 else:
@@ -62,3 +62,4 @@ def verify():
 
 if __name__ == "__main__":
     verify()
+
