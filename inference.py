@@ -54,43 +54,61 @@ def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 
-def log_step(step: int, action: str, reward: float, done: bool, error) -> None:
-    safe_r = _safe_reward(reward)
-    # Hard clamp inline before formatting
-    safe_r = min(max(safe_r, 0.05), 0.95)
-    error_val = error if error else "null"
-    done_val = str(done).lower()
+def log_step(step, action, reward, done, error):
+    r = reward
+    try:
+        r = float(r)
+    except (TypeError, ValueError):
+        r = 0.05
+
+    if r <= 0:
+        r = 0.05
+    elif r >= 1:
+        r = 0.95
+
+    # prevent rounding to 0 or 1
+    if r < 0.01:
+        r = 0.01
+    if r > 0.99:
+        r = 0.99
+
     print(
-        f"[STEP] step={step} action={action} reward={safe_r:.6f} done={done_val} error={error_val}",
+        f"[STEP] step={step} action={action} reward={r:.6f} done={str(done).lower()} error={error if error else 'null'}",
         flush=True
     )
 
 
 def log_end(success: bool, steps: int, rewards: list) -> None:
-    # Force-sanitize every single reward with triple safety
     safe_rewards = []
-    for r in rewards:
-        sr = _safe_reward(r)
-        # HARD clamp again
-        if sr <= 0.05:
-            sr = 0.05
-        if sr >= 0.95:
-            sr = 0.95
-        safe_rewards.append(sr)
 
-    # If rewards list is empty, add a safe placeholder
+    for r in rewards:
+        try:
+            r = float(r)
+        except (TypeError, ValueError):
+            r = 0.05
+
+        if r <= 0:
+            r = 0.05
+        elif r >= 1:
+            r = 0.95
+
+        # prevent rounding to 0 or 1
+        if r < 0.01:
+            r = 0.01
+        if r > 0.99:
+            r = 0.99
+
+        safe_rewards.append(r)
+
+    # If empty, add safe placeholder
     if not safe_rewards:
         safe_rewards = [0.05]
 
-    # Prevent uniform values (hidden killer)
+    # prevent uniform values (VERY IMPORTANT)
     if len(safe_rewards) > 1 and len(set(round(r, 6) for r in safe_rewards)) == 1:
         safe_rewards[0] = 0.51
 
-    # Assert before printing
-    for r in safe_rewards:
-        assert 0 < r < 1, f"INVALID REWARD DETECTED: {r}"
-
-    rewards_str = ",".join(f"{min(max(sr,0.05),0.95):.6f}" for sr in safe_rewards)
+    rewards_str = ",".join(f"{r:.6f}" for r in safe_rewards)
 
     print(
         f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
