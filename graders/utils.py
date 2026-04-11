@@ -1,9 +1,22 @@
+import math
+
+
 def safe_score(score: float) -> float:
     """
-    Clamps a score strictly between 0 and 1 using a very small buffer (0.01).
-    Ensures compliance with exclusive interval (0, 1) requirements.
+    Clamps a score strictly between 0 and 1.
+    Uses 0.001 / 0.999 bounds so even :.2f formatting stays safe.
     """
-    EPSILON = 0.01
-    # Exclusive range: (0.000001, 0.99)
-    return max(EPSILON, min(float(score), 1.0 - EPSILON))
+    try:
+        score = float(score)
+    except (TypeError, ValueError):
+        return 0.001
 
+    if math.isnan(score) or math.isinf(score):
+        return 0.001
+
+    if score <= 0.0:
+        return 0.001
+    if score >= 1.0:
+        return 0.99
+
+    return score

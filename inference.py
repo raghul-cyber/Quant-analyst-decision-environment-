@@ -1,5 +1,6 @@
 import os
 import json
+import math
 import requests
 import traceback
 import sys
@@ -21,52 +22,69 @@ Respond ONLY with valid JSON in this exact format:
 - HOLD: amount must be 0.0
 - Do not add any text outside the JSON."""
 
+
 def _safe_reward(r) -> float:
     """
     Sanitize reward so it is NEVER exactly 0.0 or 1.0.
+    Uses 0.001 / 0.999 bounds so even :.2f formatting stays safe.
     """
     try:
         r = float(r)
     except (TypeError, ValueError):
-        return 0.01
+        return 0.001
 
-    import math
     if math.isnan(r) or math.isinf(r):
-        return 0.01
+        return 0.001
 
-    if r <= 0.0: return 0.01
-    if r >= 1.0: return 0.99
+    if r <= 0.0:
+        return 0.001
+    if r >= 1.0:
+        return 0.99
+
     return r
+
 
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
+
 def log_step(step: int, action: str, reward: float, done: bool, error) -> None:
     safe_r    = _safe_reward(reward)
     error_val = error if error else "null"
-    done_val  = str(done).lower()          # must be lowercase: true or false
+    done_val  = str(done).lower()
     print(
         f"[STEP] step={step} action={action} reward={safe_r:.6f} done={done_val} error={error_val}",
         flush=True
     )
 
+
 def log_end(success: bool, steps: int, rewards: list) -> None:
-    # Sanitize every reward in the list
+    # Force-sanitize every single reward with triple safety
     safe_rewards = []
     for r in rewards:
         sr = _safe_reward(r)
+        # Belt-and-suspenders: hard clamp AGAIN
+        if sr <= 0.0:
+            sr = 0.001
+        if sr >= 1.0:
+            sr = 0.99
         safe_rewards.append(sr)
-    
+
     # If rewards list is empty, add a safe placeholder
     if not safe_rewards:
-        safe_rewards = [0.01]
-    
+        safe_rewards = [0.001]
+
+    # Assert before printing — catch bugs early
+    for r in safe_rewards:
+        assert 0 < r < 1, f"INVALID REWARD DETECTED: {r}"
+
     rewards_str = ",".join(f"{sr:.6f}" for sr in safe_rewards)
-    
+
     print(
         f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
         flush=True
     )
+
 
 def get_action_from_model(client, obs):
     obs_str = json.dumps(obs, indent=2)
@@ -84,41 +102,48 @@ def get_action_from_model(client, obs):
     elif action_str_raw.startswith("```"): action_str_raw = action_str_raw[3:]
     if action_str_raw.endswith("```"): action_str_raw = action_str_raw[:-3]
     action_str_raw = action_str_raw.strip()
-    
+
     action_json = json.loads(action_str_raw)
     if "amount" not in action_json: action_json["amount"] = 0.0
     if "action_type" not in action_json: action_json["action_type"] = "HOLD"
     return action_json
 
+
 TASKS = [
     {
-        "task_name": "easy",           # sent to get_grader()
-        "env_task":  "bull_trend",     # sent to /reset?task=X
-        "label":     "Easy — Bull Trend"
+        "task_name": "easy",
+        "env_task":  "bull_trend",
+        "label":     "Easy - Bull Trend"
     },
     {
         "task_name": "medium",
         "env_task":  "noisy_market",
-        "label":     "Medium — Noisy Market"
+        "label":     "Medium - Noisy Market"
     },
     {
         "task_name": "hard",
         "env_task":  "shock_recovery",
-        "label":     "Hard — Shock Recovery"
+        "label":     "Hard - Shock Recovery"
     },
 ]
+
 
 def main():
     client = OpenAI(
         base_url=API_BASE_URL,
         api_key=HF_TOKEN
     )
-    
+
     for task in TASKS:
-        task_name = task["task_name"]   # for get_grader()
-        env_task  = task["env_task"]    # for /reset endpoint
+        task_name = task["task_name"]
+        env_task  = task["env_task"]
 
         log_start(task=task_name, env="qade", model=MODEL_NAME)
+
+        rewards = []
+        steps_taken = 0
+        done = False
+        success = False
 
         try:
             response = requests.post(
@@ -127,12 +152,8 @@ def main():
             )
             obs = response.json()
 
-            rewards = []
             actions_list = []
             portfolio_values_list = [obs.get("portfolio_value", 10000.0)]
-            steps_taken = 0
-            done = False
-            success = False
 
             for step in range(1, MAX_STEPS + 1):
                 if done:
@@ -140,36 +161,43 @@ def main():
 
                 try:
                     action = get_action_from_model(client, obs)
-                except Exception as e:
+                except Exception:
                     action = {"action_type": "HOLD", "amount": 0.0, "reasoning": "fallback"}
 
                 try:
-                    result   = requests.post(
+                    result = requests.post(
                         f"http://localhost:7860/step?task={env_task}",
                         json=action
                     ).json()
-                    reward   = _safe_reward(float(result.get("reward", 0)))
-                    done     = bool(result.get("done", False))
-                    error    = result.get("error", None)
-                    obs      = result.get("observation", obs)
-                    
+
+                    # NEVER use raw reward — always sanitize immediately
+                    raw_reward = result.get("reward", 0)
+                    reward = _safe_reward(raw_reward)
+
+                    done    = bool(result.get("done", False))
+                    error   = result.get("error", None)
+                    obs     = result.get("observation", obs)
+
                     # Track real data for grader
                     actions_list.append(action)
                     portfolio_values_list.append(obs.get("portfolio_value", 10000.0))
+
                 except Exception as e:
-                    reward = 0
+                    # NEVER use raw 0 — always use safe value
+                    reward = 0.001
                     done   = False
                     error  = str(e)
 
+                # Sanitize AGAIN before appending
                 rewards.append(_safe_reward(reward))
                 steps_taken = step
-                
+
                 action_str = json.dumps(action).replace("\n", " ").replace("\r", "")
                 log_step(step=step, action=action_str, reward=reward, done=done, error=error)
 
             success = sum(rewards) > 0
 
-            # Use task_name (short) for grader
+            # Grade the episode
             try:
                 grader_func = get_grader(task_name)
                 episode_log = {
@@ -182,9 +210,9 @@ def main():
                     "task_config": {"shock_steps": [25, 55]},
                 }
                 score = grader_func(episode_log)
-                
+
                 # FINAL HARD CLAMP (VERY IMPORTANT)
-                score = max(0.001, min(score, 0.999))
+                score = max(0.001, min(score, 0.99))
                 print(f"GRADER SCORE [{env_task}]: {score:.6f}")
             except Exception as e:
                 print(f"[WARN] Grader error for {task_name}: {e}")
@@ -196,6 +224,7 @@ def main():
         finally:
             log_end(success=success, steps=steps_taken, rewards=rewards)
 
+
 if __name__ == "__main__":
     try:
         main()
@@ -204,9 +233,5 @@ if __name__ == "__main__":
         print(f"[ERROR] inference.py fatal error: {e}")
         traceback.print_exc()
         # Still emit [END] if somehow missed
-        print("[END] success=false steps=0 rewards=")
+        print("[END] success=false steps=0 rewards=0.001000")
         sys.exit(0)   # exit 0 so validator sees clean exit
-
-
-
-

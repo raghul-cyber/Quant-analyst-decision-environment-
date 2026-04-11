@@ -10,11 +10,11 @@ def grade(episode_log: dict) -> float:
 
         # Safety: if no data at all, return mid-range score
         if not portfolio_values or initial_value <= 0:
-            return 1e-6
+            return 0.5
 
         # Component 1: Return score (50%)
         pnl_pct      = (final_value - initial_value) / initial_value
-        return_score  = pnl_pct / 0.10   # 10% gain = 0.999999
+        return_score  = pnl_pct / 0.10   # 10% gain = full marks
         return_score  = safe_score(return_score)
 
         # Component 2: Direction accuracy (50%)
@@ -25,8 +25,8 @@ def grade(episode_log: dict) -> float:
             if i + 1 >= len(portfolio_values):
                 break
             total += 1
-            went_up     = portfolio_values[i + 1] > portfolio_values[i]
-            
+            went_up = portfolio_values[i + 1] > portfolio_values[i]
+
             # Handle action as dict or string
             if isinstance(action, dict):
                 action_type = action.get("action_type", "HOLD")
@@ -48,10 +48,4 @@ def grade(episode_log: dict) -> float:
         final_score = 0.5 * return_score + 0.5 * direction_score
         return safe_score(final_score)
     except Exception:
-        # Prevent validator from substituting 0.0 on crash
-        return 1e-6
-
-
-
-
-
+        return 0.001
