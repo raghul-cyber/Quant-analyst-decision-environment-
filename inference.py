@@ -100,6 +100,10 @@ def log_end(success: bool, steps: int, rewards: list) -> None:
 
         safe_rewards.append(r)
 
+    # CRITICAL FIX: ensure rewards count matches steps
+    if len(safe_rewards) < steps:
+        safe_rewards.extend([0.05] * (steps - len(safe_rewards)))
+
     # If empty, add safe placeholder
     if not safe_rewards:
         safe_rewards = [0.05]
