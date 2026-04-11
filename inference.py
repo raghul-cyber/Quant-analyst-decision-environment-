@@ -121,7 +121,6 @@ def main():
         log_start(task=task_name, env="qade", model=MODEL_NAME)
 
         try:
-            # Use env_task for the API call
             response = requests.post(
                 f"http://localhost:7860/reset",
                 params={"task": env_task}
@@ -129,6 +128,8 @@ def main():
             obs = response.json()
 
             rewards = []
+            actions_list = []
+            portfolio_values_list = [obs.get("portfolio_value", 10000.0)]
             steps_taken = 0
             done = False
             success = False
@@ -151,6 +152,10 @@ def main():
                     done     = bool(result.get("done", False))
                     error    = result.get("error", None)
                     obs      = result.get("observation", obs)
+                    
+                    # Track real data for grader
+                    actions_list.append(action)
+                    portfolio_values_list.append(obs.get("portfolio_value", 10000.0))
                 except Exception as e:
                     reward = 0
                     done   = False
@@ -168,16 +173,19 @@ def main():
             try:
                 grader_func = get_grader(task_name)
                 episode_log = {
-                    "actions": [],
+                    "actions": actions_list,
                     "rewards": rewards,
-                    "portfolio_values": [],
-                    "final_portfolio_value": 10000.0 + sum(rewards) * 100,
-                    "initial_portfolio_value": 10000.0,
+                    "portfolio_values": portfolio_values_list,
+                    "final_portfolio_value": portfolio_values_list[-1] if portfolio_values_list else 10000.0,
+                    "initial_portfolio_value": portfolio_values_list[0] if portfolio_values_list else 10000.0,
                     "steps_taken": steps_taken,
                     "task_config": {"shock_steps": [25, 55]},
                 }
                 score = grader_func(episode_log)
-                print(f"GRADER SCORE [{env_task}]: {score:.4f}")
+                
+                # FINAL HARD CLAMP (VERY IMPORTANT)
+                score = max(0.001, min(score, 0.999))
+                print(f"GRADER SCORE [{env_task}]: {score:.6f}")
             except Exception as e:
                 print(f"[WARN] Grader error for {task_name}: {e}")
 

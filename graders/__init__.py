@@ -24,10 +24,11 @@ def get_grader(task_name: str):
         try:
             raw   = grader(episode_log)
             safe  = safe_score(raw)
-            return safe
+            # FORCE-SAFE WRAPPER (ULTIMATE GUARD)
+            return max(0.001, min(safe, 0.999))
 
         except Exception as e:
             print(f"[WARN] Grader crashed: {e} — returning 1e-6")
-            return 1e-6
+            return 0.001
 
     return safe_grader
