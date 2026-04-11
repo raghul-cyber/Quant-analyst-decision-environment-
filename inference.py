@@ -24,54 +24,24 @@ Respond ONLY with valid JSON in this exact format:
 
 
 def _safe_reward(r) -> float:
-    """
-    Sanitize reward so it is NEVER exactly 0.0 or 1.0.
-    Uses 0.05/0.95 so NO formatting precision can ever produce 0.00 or 1.00.
-    """
     try:
         r = float(r)
     except (TypeError, ValueError):
-        return 0.05
+        return 0.001
 
+    import math
     if math.isnan(r) or math.isinf(r):
-        return 0.05
+        return 0.001
 
     if r <= 0.0:
-        return 0.05
+        return 0.001
     if r >= 1.0:
-        return 0.95
-
-    # Extra guard for dangerously close values
-    if r < 0.05:
-        return 0.05
-    if r > 0.95:
-        return 0.95
-
+        return 0.999
     return r
 
 
-def log_start(task: str, env: str, model: str) -> None:
-    print(f"[START] task={task} env={env} model={model}", flush=True)
-
-
 def log_step(step, action, reward, done, error):
-    r = reward
-    try:
-        r = float(r)
-    except (TypeError, ValueError):
-        r = 0.05
-
-    if r <= 0:
-        r = 0.05
-    elif r >= 1:
-        r = 0.95
-
-    # prevent rounding to 0 or 1
-    if r < 0.01:
-        r = 0.01
-    if r > 0.99:
-        r = 0.99
-
+    r = _safe_reward(reward)
     print(
         f"[STEP] step={step} action={action} reward={r:.6f} done={str(done).lower()} error={error if error else 'null'}",
         flush=True
@@ -80,35 +50,15 @@ def log_step(step, action, reward, done, error):
 
 def log_end(success: bool, steps: int, rewards: list) -> None:
     safe_rewards = []
-
     for r in rewards:
-        try:
-            r = float(r)
-        except (TypeError, ValueError):
-            r = 0.05
+        sr = _safe_reward(r)
+        safe_rewards.append(sr)
 
-        if r <= 0:
-            r = 0.05
-        elif r >= 1:
-            r = 0.95
-
-        # prevent rounding to 0 or 1
-        if r < 0.01:
-            r = 0.01
-        if r > 0.99:
-            r = 0.99
-
-        safe_rewards.append(r)
-
-    # CRITICAL FIX: ensure rewards count matches steps
+    # ensure rewards count matches steps
     if len(safe_rewards) < steps:
-        safe_rewards.extend([0.05] * (steps - len(safe_rewards)))
+        safe_rewards.extend([0.001] * (steps - len(safe_rewards)))
 
-    # If empty, add safe placeholder
-    if not safe_rewards:
-        safe_rewards = [0.05]
-
-    # prevent uniform values (VERY IMPORTANT)
+    # prevent uniform values
     if len(safe_rewards) > 1 and len(set(round(r, 6) for r in safe_rewards)) == 1:
         safe_rewards[0] = 0.51
 
@@ -217,7 +167,7 @@ def main():
 
                 except Exception as e:
                     # NEVER use raw 0
-                    reward = 0.05
+                    reward = 0.001
                     done   = False
                     error  = str(e)
 
@@ -245,7 +195,9 @@ def main():
                 score = grader_func(episode_log)
 
                 # FINAL HARD CLAMP
-                score = max(0.05, min(score, 0.95))
+                score = max(0.001, min(score, 0.999))
+                print(f"FINAL SCORE: {score}")
+                assert 0 < score < 1, f"SCORE INVALID: {score}"
                 print(f"GRADER SCORE [{env_task}]: {score:.6f}")
             except Exception as e:
                 print(f"[WARN] Grader error for {task_name}: {e}")
@@ -264,5 +216,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[ERROR] inference.py fatal error: {e}")
         traceback.print_exc()
-        print("[END] success=false steps=0 rewards=0.050000")
+        print("[END] success=false steps=0 rewards=0.001000")
         sys.exit(0)

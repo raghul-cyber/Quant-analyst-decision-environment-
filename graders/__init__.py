@@ -1,9 +1,7 @@
 from graders.easy_grader   import grade as easy_grade
 from graders.medium_grader import grade as medium_grade
 from graders.hard_grader   import grade as hard_grade
-
-from graders.utils import safe_score
-
+from graders.utils import strict_safe
 
 GRADER_MAP = {
     "easy":           easy_grade,
@@ -12,9 +10,6 @@ GRADER_MAP = {
     "bull_trend":     easy_grade,
     "noisy_market":   medium_grade,
     "shock_recovery": hard_grade,
-    "easy_task":      easy_grade,
-    "medium_task":    medium_grade,
-    "hard_task":      hard_grade,
 }
 
 def get_grader(task_name: str):
@@ -23,11 +18,9 @@ def get_grader(task_name: str):
     def safe_grader(episode_log: dict) -> float:
         try:
             raw = grader(episode_log)
-            safe = safe_score(raw)
-            # ULTIMATE GUARD
-            return max(0.05, min(safe, 0.95))
+            return strict_safe(raw)
         except Exception as e:
             print(f"[WARN] Grader crashed: {e}")
-            return 0.05
+            return 0.001
 
     return safe_grader

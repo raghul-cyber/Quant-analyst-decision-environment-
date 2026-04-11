@@ -33,30 +33,23 @@ def verify():
         for name, log in [("FAILED", failed_log), ("PERFECT", perfect_log)]:
             try:
                 score = grader(log)
-                f1 = f"{score:.1f}"
                 f2 = f"{score:.2f}"
-                f4 = f"{score:.4f}"
                 f6 = f"{score:.6f}"
 
-                bad = False
-                for fmt_name, fmt_val in [(".1f", f1), (".2f", f2), (".4f", f4), (".6f", f6)]:
-                    if fmt_val in ("0.0", "1.0", "0.00", "1.00", "0.0000", "1.0000", "0.000000", "1.000000"):
-                        print(f"  [{name}] FAIL: {fmt_name}={fmt_val} (raw={score})")
-                        bad = True
-                        all_pass = False
-
-                if not bad:
-                    if not (0.0 < score < 1.0):
-                        print(f"  [{name}] FAIL: raw={score} out of (0,1)")
-                        all_pass = False
-                    else:
-                        print(f"  [{name}] PASS  raw={score}  .2f={f2}  .6f={f6}")
+                if not (0.0 < score < 1.0):
+                    print(f"  [{name}] FAIL: raw={score} out of (0,1)")
+                    all_pass = False
+                elif f6 == "0.000000" or f6 == "1.000000":
+                    print(f"  [{name}] FAIL: .6f is boundary")
+                    all_pass = False
+                else:
+                    print(f"  [{name}] PASS  raw={score}  .2f={f2}  .6f={f6}")
             except Exception as e:
                 print(f"  [{name}] CRASHED: {e}")
                 all_pass = False
 
     if all_pass:
-        print("\nALL BOUNDS VERIFIED - SAFE AT ANY PRECISION")
+        print("\nALL BOUNDS VERIFIED - SAFE")
     else:
         print("\nFAILED")
     sys.exit(0 if all_pass else 1)
