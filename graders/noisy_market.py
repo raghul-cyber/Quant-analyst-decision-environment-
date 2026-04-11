@@ -17,7 +17,7 @@ def grade(episode_log: dict) -> float:
 
         # Component 2: Drawdown control (40%)
         peak         = initial_value
-        max_drawdown = 0.0001   # start non-zero to avoid division edge case
+        max_drawdown = 0.0001
 
         for val in portfolio_values:
             if val > peak:
@@ -26,14 +26,12 @@ def grade(episode_log: dict) -> float:
                 dd           = (peak - val) / peak
                 max_drawdown = max(max_drawdown, dd)
 
-        # 15% drawdown = low score
         drawdown_score = 1.0 - (max_drawdown / 0.15)
         drawdown_score = safe_score(drawdown_score)
 
         # Component 3: Trade efficiency (20%)
         n_trades = 0
         for a in actions:
-            # Handle action as dict or string softly
             if isinstance(a, dict):
                 act_type = a.get("action_type", "HOLD")
             elif isinstance(a, str):
@@ -44,7 +42,6 @@ def grade(episode_log: dict) -> float:
             if act_type in ("BUY", "SELL"):
                 n_trades += 1
 
-        # cap at 20 trades, always non-zero
         efficiency_score = safe_score(1.0 - (n_trades / 20))
 
         final_score = (
@@ -54,4 +51,4 @@ def grade(episode_log: dict) -> float:
         )
         return safe_score(final_score)
     except Exception:
-        return 0.001
+        return 0.05

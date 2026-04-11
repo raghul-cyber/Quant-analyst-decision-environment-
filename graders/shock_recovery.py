@@ -15,9 +15,8 @@ def grade(episode_log: dict) -> float:
         # Component 1: Survival (30%)
         min_value = min(portfolio_values)
         if min_value >= 5000.0:
-            survival_score = 0.95   # good but never 1.0
+            survival_score = 0.90
         else:
-            # partial credit based on how low it went
             survival_score = safe_score(min_value / 5000.0 * 0.5)
 
         # Component 2: Recovery (40%)
@@ -34,7 +33,6 @@ def grade(episode_log: dict) -> float:
                 continue
 
             ratio = val_recovery / val_shock
-            # map: 0.8 ratio -> 0.1, 1.0 ratio -> 0.5, 1.2 ratio -> 0.9
             mapped = (ratio - 0.8) / 0.4
             recovery_scores.append(safe_score(mapped))
 
@@ -52,4 +50,4 @@ def grade(episode_log: dict) -> float:
         )
         return safe_score(final_score)
     except Exception:
-        return 0.001
+        return 0.05
