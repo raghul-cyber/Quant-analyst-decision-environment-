@@ -11,7 +11,14 @@ from dataclasses import asdict
 class QADEEnv:
     def __init__(self, task: str, seed: int = 42):
         self.task = task
-        self.seed = seed
+        
+        TASK_SEEDS = {
+            "bull_trend":     42,
+            "noisy_market":   137,
+            "shock_recovery": 999,
+        }
+        self.seed = TASK_SEEDS.get(task, seed)
+        
         self.max_steps = {
             "easy": 30, "medium": 50, "hard": 80,
             "bull_trend": 30, "noisy_market": 50, "shock_recovery": 80
@@ -23,7 +30,7 @@ class QADEEnv:
         self.portfolio_shares = 0.0
         self.peak_portfolio_value = 10000.0
         self.done = False
-        self.reward_calculator = RewardCalculator()
+        self.reward_calculator = RewardCalculator(task_name=self.task, seed=self.seed)
         self.logger = EpisodeLogger()
         
         self._history_len = 30
@@ -34,26 +41,32 @@ class QADEEnv:
         prices = np.zeros(N)
         prices[0] = 100.0 
         
-        if self.task == "hard":
-            self._shock_indices = np.random.choice(
+        if self.task == "hard" or self.task == "shock_recovery":
+            self._shock_indices = self.rng.choice(
                 range(self._history_len, N), size=2, replace=False
             ).tolist()
 
         for i in range(1, N):
             prev = prices[i-1]
-            if self.task == "easy":
-                small_noise = np.random.normal(0, 0.005)
+            if self.task == "easy" or self.task == "bull_trend":
+                small_noise = self.rng.normal(0, 0.005)
                 prices[i] = prev * (1 + 0.005 + small_noise)
-            elif self.task == "medium":
-                prices[i] = prev * (1 + np.random.normal(0.01, 0.0015))
-            elif self.task == "hard":
-                prices[i] = prev * (1 + np.random.normal(0.0, 0.02))
+            elif self.task == "medium" or self.task == "noisy_market":
+                prices[i] = prev * (1 + self.rng.normal(0.01, 0.015))
+            elif self.task == "hard" or self.task == "shock_recovery":
+                prices[i] = prev * (1 + self.rng.normal(0.0, 0.02))
                 if i in self._shock_indices:
-                    prices[i] = prices[i] * (1 - np.random.uniform(0.15, 0.25))
+                    prices[i] = prices[i] * (1 - self.rng.uniform(0.15, 0.25))
             else:
-                prices[i] = prev * (1 + np.random.normal(0, 0.01))
+                prices[i] = prev * (1 + self.rng.normal(0, 0.01))
                 
         self.price_series = prices.tolist()
+        return self.price_series
+
+    def _generate_volumes(self):
+        N = self.max_steps + self._history_len + 1
+        self.volume_series = (self.rng.exponential(1000, size=N) + 500).tolist()
+        return self.volume_series
 
     def _get_observation(self) -> QADEObservation:
         end_idx = self.current_step + self._history_len
@@ -88,15 +101,27 @@ class QADEEnv:
         )
 
     def reset(self) -> QADEObservation:
+        TASK_SEEDS = {
+            "bull_trend":     42,
+            "noisy_market":   137,
+            "shock_recovery": 999,
+        }
+        self.seed = TASK_SEEDS.get(self.task, 42)
+        # Seed MUST be set here, inside reset
         np.random.seed(self.seed)
+        self.rng = np.random.RandomState(self.seed)
+
         self.current_step = 0
         self.portfolio_cash = 10000.0
         self.portfolio_shares = 0.0
         self.peak_portfolio_value = 10000.0
         self.done = False
         self.reward_calculator.reset()
-        self._generate_prices()
+        
+        self.price_series = self._generate_prices()
+        self.volume_series = self._generate_volumes()
         obs = self._get_observation()
+        
         # Initialize episode logger
         task_config = asdict(get_task(self.task))
         self.logger.start_episode(task_config, obs.portfolio_value)

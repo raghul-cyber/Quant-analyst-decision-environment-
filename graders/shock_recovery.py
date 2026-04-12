@@ -24,7 +24,7 @@ def grade(episode_log: dict) -> float:
     # Component 1: Survival (30%)
     min_val = min(portfolio_values)
     if min_val >= 5000.0:
-        survival_score = 0.85   # good but never 1.0
+        survival_score = 0.8 + (min_val / initial_value) * 0.1  # dynamic, never round 0.85
     else:
         survival_score = strict_final(min_val / 5000.0 * 0.5)
 

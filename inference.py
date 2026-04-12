@@ -30,7 +30,7 @@ Rules:
 - Do NOT output anything except the JSON object
 """
 
-def _safe(r, fallback=0.05) -> float:
+def _safe(r, fallback=0.001) -> float:
     try:
         r = float(r)
     except Exception: return fallback
@@ -67,7 +67,7 @@ def call_step(action: dict) -> dict:
         return r.json()
     except Exception as e:
         print(f"[ERROR] /step failed: {e}", file=sys.stderr)
-        return {"observation": {}, "reward": 0.05, "done": True, "info": {}}
+        return {"observation": {}, "reward": 0.001, "done": True, "info": {}}
 
 def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}", flush=True)
@@ -199,8 +199,18 @@ def action_to_str(action: dict) -> str:
     return f"{action.get('action_type', 'HOLD')} amt={float(action.get('amount', 0.0)):.2f}"
 
 def run_episode(client, task):
-    task_name = task["task_name"]; env_task = task["env_task"]; max_steps = task["max_steps"]
-    rewards = []; actions = []; portfolio_values = []; steps_taken = 0; success = False; done = False
+    task_name = task["task_name"]
+    env_task  = task["env_task"]
+    max_steps = task["max_steps"]
+
+    # CRITICAL: fresh lists for EVERY task
+    rewards          = []   # must be [] not reused
+    actions          = []
+    portfolio_values = []
+    steps_taken      = 0
+    success          = False
+    done             = False
+
     log_start(task=task_name, env="qade", model=MODEL_NAME)
     try:
         obs = call_reset(env_task)
@@ -209,7 +219,7 @@ def run_episode(client, task):
             if done: break
             action = get_action(client, obs, step, task_name)
             result = call_step(action)
-            raw_r = result.get("reward", 0.05); done = bool(result.get("done", False)); error = result.get("error", None)
+            raw_r = result.get("reward", 0.001); done = bool(result.get("done", False)); error = result.get("error", None)
             new_obs = result.get("observation", {})
             if new_obs: obs = new_obs
             safe_r = _safe(raw_r); rewards.append(safe_r); actions.append(action)
@@ -229,7 +239,7 @@ def run_episode(client, task):
         except: pass
     except Exception as e:
         print(f"[ERROR] {e}", file=sys.stderr)
-        if not rewards: rewards = [0.05]
+        if not rewards: rewards = [0.001]
     finally: log_end(success, steps_taken, rewards)
 
 def main():
