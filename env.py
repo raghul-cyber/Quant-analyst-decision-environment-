@@ -9,6 +9,21 @@ from episode_logger import EpisodeLogger
 from tasks import get_task
 from graders import get_grader
 from dataclasses import asdict
+import math
+
+def _fmt_score(score) -> float:
+    """
+    Round to 4 decimal places and hard clamp.
+    Prevents floating point creep like 0.8700000000000001
+    """
+    try:
+        s = float(score)
+        s = round(s, 4)          # 0.8700000000000001 -> 0.87
+        s = max(0.01, min(s, 0.99))
+        assert 0.0 < s < 1.0
+        return s
+    except Exception:
+        return 0.50
 
 class QADEEnv:
     def __init__(self, task: str, seed: int = 42):
@@ -280,8 +295,7 @@ async def score_endpoint(request: Request):
         task_name   = body.get("task", body.get("task_name", "bull_trend"))
         episode_log = body.get("episode_log", body.get("log", body))
         grader = get_grader(task_name)
-        score  = grader(episode_log)
-        score  = max(0.01, min(float(score), 0.99))
+        score  = _fmt_score(grader(episode_log))
         return {"score": score, "task": task_name, "valid": True}
     except Exception as e:
         return {"score": 0.50, "task": "unknown", "valid": True, "error": str(e)}
@@ -293,8 +307,7 @@ async def grade_endpoint(request: Request):
         task_name   = body.get("task", body.get("task_name", "bull_trend"))
         episode_log = body.get("episode_log", body.get("log", body))
         grader = get_grader(task_name)
-        score  = grader(episode_log)
-        score  = max(0.01, min(float(score), 0.99))
+        score  = _fmt_score(grader(episode_log))
         return {"score": score, "task": task_name, "valid": True}
     except Exception as e:
         return {"score": 0.50, "valid": True, "error": str(e)}
@@ -315,8 +328,7 @@ def grade_get(task_name: str):
         "task_config": {"shock_steps": [25, 55]}
     }
     grader = get_grader(task_name)
-    score  = grader(episode_log)
-    score  = max(0.01, min(float(score), 0.99))
+    score  = _fmt_score(grader(episode_log))
     return {"task": task_name, "score": score, "valid": True}
 
 @app.get("/reset/{task_name}")

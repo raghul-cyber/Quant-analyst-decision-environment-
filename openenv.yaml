@@ -10,14 +10,12 @@ tasks:
     success_threshold: 0.3
     grader: graders.easy_grader
     grader_fn: grade
-
   - name: noisy_market
     difficulty: medium
     max_steps: 50
     success_threshold: 0.3
     grader: graders.medium_grader
     grader_fn: grade
-
   - name: shock_recovery
     difficulty: hard
     max_steps: 80

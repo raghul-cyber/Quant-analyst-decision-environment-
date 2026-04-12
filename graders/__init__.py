@@ -12,6 +12,7 @@ def _clamp(score) -> float:
         return 0.5
     if math.isnan(score) or math.isinf(score):
         return 0.5
+    score = round(score, 4)          # kill floating point creep
     # Use 0.01 and 0.99 as safe bounds — far from 0 and 1
     return max(0.01, min(score, 0.99))
 
