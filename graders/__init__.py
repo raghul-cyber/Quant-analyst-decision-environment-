@@ -184,6 +184,15 @@ def get_grader(task_name: str):
         return _safe_grade(grader, episode_log)
     return safe
 
-# Also expose direct grade() function some validators call
-def grade(task_name: str, episode_log: dict) -> float:
-    return get_grader(task_name)(episode_log)
+# Also expose direct grade() function with flexible signature
+def grade(task_name_or_log=None, episode_log=None, **kwargs) -> float:
+    # Handle both calling conventions:
+    # grade("bull_trend", episode_log)
+    # grade(episode_log)  <-- validator may do this
+    if isinstance(task_name_or_log, dict):
+        log = task_name_or_log
+        task = log.get("task_name", log.get("task", "bull_trend"))
+    else:
+        task = str(task_name_or_log or "bull_trend")
+        log  = episode_log or {}
+    return get_grader(task)(log)
