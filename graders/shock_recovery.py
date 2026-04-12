@@ -1,4 +1,4 @@
-from graders.utils import strict_safe
+from graders.utils import strict_final
 
 def grade(episode_log: dict) -> float:
     try:
@@ -20,7 +20,7 @@ def grade(episode_log: dict) -> float:
         pnl_score = pnl_pct / 0.03
 
         final = 0.5 * survival_score + 0.5 * pnl_score
-        return strict_safe(final)
+        return strict_final(final)
 
     except Exception:
         return 0.001

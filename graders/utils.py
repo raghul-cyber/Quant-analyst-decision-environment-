@@ -1,19 +1,28 @@
-def strict_safe(score):
+def strict_final(score):
     try:
         score = float(score)
     except:
-        return 0.15
+        return 0.001
 
     import math
     if math.isnan(score) or math.isinf(score):
-        return 0.15
+        return 0.001
 
-    # HARD CLAMP (STRICTEST)
-    # Using 0.05 and 0.85 to ensure average never rounds to 0.0 or 1.0
-    # and avoiding constant-pattern detection
-    if score <= 0.05:
-        return 0.07  # slightly off the edge
-    if score >= 0.85:
-        return 0.85
+    # HARD FINAL CLAMP (MOST IMPORTANT LINE)
+    if score <= 0:
+        return 0.001
+    if score >= 1:
+        return 0.999
+
+    # EXTRA SAFETY (avoid rounding to 1)
+    if score > 0.999:
+        return 0.999
+    if score < 0.001:
+        return 0.001
 
     return score
+
+
+def strict_safe(score):
+    """Alias for backward compatibility if needed, but redirects to strict_final."""
+    return strict_final(score)

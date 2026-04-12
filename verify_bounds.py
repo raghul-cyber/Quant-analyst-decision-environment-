@@ -9,14 +9,17 @@ from graders import get_grader
 def verify():
     tasks = ["bull_trend", "noisy_market", "shock_recovery", "easy", "medium", "hard"]
 
+    # FAILED log results in 0.5 or 0.001
     failed_log = {
         "actions": [],
+        "rewards": [],
         "portfolio_values": [],
         "final_portfolio_value": 0,
         "initial_portfolio_value": 10000.0,
         "task_config": {}
     }
 
+    # PERFECT log results in 0.999
     perfect_log = {
         "actions": [{"action_type": "BUY"} for _ in range(10)],
         "portfolio_values": [10000.0 * (1 + 0.05 * i) for i in range(11)],
@@ -36,11 +39,12 @@ def verify():
                 f2 = f"{score:.2f}"
                 f6 = f"{score:.6f}"
 
+                # Validator requirement: strictly between 0 and 1
                 if not (0.0 < score < 1.0):
                     print(f"  [{name}] FAIL: raw={score} out of (0,1)")
                     all_pass = False
                 elif f6 == "0.000000" or f6 == "1.000000":
-                    print(f"  [{name}] FAIL: .6f is boundary")
+                    print(f"  [{name}] FAIL: .6f rounds to boundary")
                     all_pass = False
                 else:
                     print(f"  [{name}] PASS  raw={score}  .2f={f2}  .6f={f6}")

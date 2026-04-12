@@ -1,4 +1,4 @@
-from graders.utils import strict_safe
+from graders.utils import strict_final
 
 def grade(episode_log: dict) -> float:
     try:
@@ -23,7 +23,7 @@ def grade(episode_log: dict) -> float:
         drawdown_score = 1 - (max_drawdown / 0.15)
 
         final = 0.5 * profit_score + 0.5 * drawdown_score
-        return strict_safe(final)
+        return strict_final(final)
 
     except Exception:
         return 0.001
