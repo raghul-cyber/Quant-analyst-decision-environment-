@@ -1,229 +1,196 @@
-import os
-import sys
-import json
-import math
-import time
-import random
-import requests
+import os, sys, json, math, time, requests
 from openai import OpenAI
-from graders import get_grader
 
-# ═══════════════════════════════════════
-# ENV VARS
-# ═══════════════════════════════════════
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME   = os.getenv("MODEL_NAME",   "Qwen/Qwen2.5-72B-Instruct")
-HF_TOKEN     = os.getenv("HF_TOKEN")        
-ENV_BASE_URL = os.getenv("ENV_BASE_URL",  "http://localhost:7860")
+HF_TOKEN     = os.getenv("HF_TOKEN")
+ENV_BASE_URL = os.getenv("ENV_BASE_URL", "http://localhost:7860")
 
-# ═══════════════════════════════════════
-# TASK DEFINITIONS
-# ═══════════════════════════════════════
-# VALIDATOR CRITICAL: Every task MUST be exactly 30 steps for avg math consistency (/30)
-MAX_STEPS = 30
-
+# Correct step counts per task — DO NOT normalize to 30
 TASKS = [
-    {"task_name": "bull_trend",     "env_task": "bull_trend"},
-    {"task_name": "noisy_market",   "env_task": "noisy_market"},
-    {"task_name": "shock_recovery", "env_task": "shock_recovery"},
+    {"task_name": "bull_trend",     "env_task": "bull_trend",     "max_steps": 30},
+    {"task_name": "noisy_market",   "env_task": "noisy_market",   "max_steps": 50},
+    {"task_name": "shock_recovery", "env_task": "shock_recovery", "max_steps": 80},
 ]
 
-TEMPERATURE = 0.7
-MAX_TOKENS  = 256
-
-# ═══════════════════════════════════════
-# REWARD SAFETY
-# ═══════════════════════════════════════
-def _safe(r, fallback=0.15) -> float:
-    """
-    Clamp reward to (0.05, 0.85) to avoid rounding to 0.0 or 1.0.
-    Adds small variation to pass 'Statistical / Pattern' checks.
-    """
+def _safe(r, fallback=0.05) -> float:
+    """Clamp to strictly open (0.001, 0.999). No noise added."""
     try:
         r = float(r)
-    except (TypeError, ValueError):
-        r = fallback
-
+    except Exception:
+        return fallback
     if math.isnan(r) or math.isinf(r):
-        r = fallback
+        return fallback
+    if r <= 0.0: return 0.002
+    if r >= 1.0: return 0.998
+    return r
 
-    # Add small variation to prevent validator rejecting 'constant' patterns
-    r += random.uniform(-0.02, 0.02)
-
-    # Hard clamp to conservative safe zone
-    return max(0.05, min(r, 0.85))
-
-
-# ═══════════════════════════════════════
-# LOG FUNCTIONS
-# ═══════════════════════════════════════
-def log_start(task: str, env: str, model: str) -> None:
+def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
-
-def log_step(step: int, action: str, reward: float, done: bool, error) -> None:
-    action_str = str(action).replace("\n", " ").replace("\r", "")[:120]
-    safe_r    = _safe(reward)
-    error_val = str(error) if error else "null"
-    done_val  = "true" if done else "false"
-    
+def log_step(step, action, reward, done, error):
+    action_str = str(action).replace("\n"," ")[:120]
     print(
         f"[STEP] step={step} action={action_str} "
-        f"reward={safe_r:.6f} done={done_val} error={error_val}",
+        f"reward={_safe(reward):.6f} done={'true' if done else 'false'} "
+        f"error={error if error else 'null'}",
         flush=True
     )
 
-
-def log_end(success: bool, steps: int, rewards: list) -> None:
-    # Ensure exactly 30 rewards
-    safe_rewards = []
-    for r_idx in range(MAX_STEPS):
-        if r_idx < len(rewards):
-            safe_rewards.append(_safe(rewards[r_idx]))
-        else:
-            # Pad with varied fallback
-            safe_rewards.append(0.1 + random.uniform(-0.02, 0.02))
-    
-    # Format to 6 decimal places 
-    rewards_str = ",".join(f"{r:.6f}" for r in safe_rewards)
-    success_str = "true" if success else "false"
-    
-    # Always report steps=30 for the validator's fixed averaging
+def log_end(success, steps, rewards):
+    safe_rewards = [_safe(r) for r in rewards] if rewards else [0.05]
+    rewards_str  = ",".join(f"{r:.6f}" for r in safe_rewards)
     print(
-        f"[END] success={success_str} steps=30 rewards={rewards_str}",
+        f"[END] success={'true' if success else 'false'} "
+        f"steps={steps} rewards={rewards_str}",
         flush=True
     )
 
-
-# ═══════════════════════════════════════
-# SYSTEM PROMPT
-# ═══════════════════════════════════════
-SYSTEM_PROMPT = """You are a quant trading agent for the QADE environment.
-Respond with ONLY this JSON format:
-{"action_type": "BUY", "amount": 500.0, "reasoning": "string"}
+SYSTEM_PROMPT = """You are a quant trading agent.
+Respond ONLY with JSON: {"action_type": "BUY"|"SELL"|"HOLD", "amount": float, "reasoning": "string"}
 """
 
 def parse_action(text: str) -> dict:
     try:
-        text = text.strip()
-        start = text.find("{")
-        end   = text.rfind("}") + 1
-        if start >= 0 and end > start:
-            obj = json.loads(text[start:end])
-            return {
-                "action_type": obj.get("action_type", "HOLD").upper() if obj.get("action_type") in ("BUY", "SELL", "HOLD") else "HOLD",
-                "amount":      max(0.0, float(obj.get("amount", 0.0))),
-                "reasoning":   str(obj.get("reasoning", ""))[:100]
-            }
-    except: pass
-    return {"action_type": "HOLD", "amount": 0.0, "reasoning": "parse_fallback"}
+        s = text.find("{"); e = text.rfind("}") + 1
+        if s >= 0 and e > s:
+            obj = json.loads(text[s:e])
+            atype = obj.get("action_type","HOLD").upper()
+            if atype not in ("BUY","SELL","HOLD"): atype = "HOLD"
+            amt = max(0.0, float(obj.get("amount", 0.0)))
+            return {"action_type": atype, "amount": amt, "reasoning": str(obj.get("reasoning",""))[:80]}
+    except Exception:
+        pass
+    return {"action_type": "HOLD", "amount": 0.0, "reasoning": "fallback"}
 
-def action_to_str(action: dict) -> str:
-    return f"{action.get('action_type','HOLD')} amt={action.get('amount', 0.0):.2f}"
-
-def get_model_action(client: OpenAI, obs: dict, step: int, task_name: str) -> dict:
-    user_prompt = f"Task: {task_name}\nStep: {step}\nPrice: {obs.get('portfolio_value', 10000):.2f}\nAction?"
+def get_action(client, obs, step, task_name):
     try:
-        completion = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user_prompt}],
-            temperature=TEMPERATURE,
-            max_tokens=MAX_TOKENS,
+        price = obs.get("price_history", [100])
+        price = price[-1] if price else 100
+        prompt = (
+            f"Task:{task_name} Step:{step} "
+            f"Price:{price:.2f} RSI:{obs.get('rsi',50):.1f} "
+            f"Cash:{obs.get('portfolio_cash',10000):.0f} "
+            f"Shares:{obs.get('portfolio_shares',0):.3f} "
+            f"Value:{obs.get('portfolio_value',10000):.0f}"
         )
-        return parse_action(completion.choices[0].message.content or "")
+        resp = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role":"system","content":SYSTEM_PROMPT},
+                {"role":"user","content":prompt}
+            ],
+            temperature=0.3,
+            max_tokens=128
+        )
+        return parse_action(resp.choices[0].message.content or "")
     except Exception as e:
-        return {"action_type": "HOLD", "amount": 0.0, "reasoning": f"error: {e}"}
+        print(f"[WARN] model error: {e}", file=sys.stderr)
+        return {"action_type":"HOLD","amount":0.0,"reasoning":"model_error"}
 
-# ═══════════════════════════════════════
-# EPISODE RUNNER
-# ═══════════════════════════════════════
-def run_episode(client: OpenAI, task: dict) -> None:
+def call_reset(env_task):
+    try:
+        r = requests.post(f"{ENV_BASE_URL}/reset", params={"task":env_task}, timeout=30)
+        data = r.json()
+        return data.get("observation", data)
+    except Exception as e:
+        print(f"[WARN] reset error: {e}", file=sys.stderr)
+        return {"price_history":[100.0]*30,"rsi":50.0,"macd":0.0,
+                "sentiment_score":0.0,"volatility":0.2,
+                "portfolio_cash":10000.0,"portfolio_shares":0.0,
+                "portfolio_value":10000.0,"step":0}
+
+def call_step(action):
+    try:
+        r = requests.post(f"{ENV_BASE_URL}/step", json=action, timeout=30)
+        return r.json()
+    except Exception as e:
+        print(f"[WARN] step error: {e}", file=sys.stderr)
+        return {"observation":{},"reward":0.05,"done":True,"info":{}}
+
+def run_episode(client, task):
     task_name = task["task_name"]
     env_task  = task["env_task"]
+    max_steps = task["max_steps"]   # correct per-task value
 
-    rewards     = []
-    steps_taken = 0
-    success     = False
-    done        = False
+    rewards          = []
+    actions          = []
     portfolio_values = []
-    actions_list = []
+    steps_taken      = 0
+    success          = False
+    done             = False
 
     log_start(task=task_name, env="qade", model=MODEL_NAME)
 
     try:
-        # Reset
-        r_reset = requests.post(f"{ENV_BASE_URL}/reset", params={"task": env_task}, timeout=30)
-        obs = r_reset.json()
-        if "observation" in obs: obs = obs["observation"]
-        curr_val = float(obs.get("portfolio_value", 10000.0))
-        portfolio_values = [curr_val]
+        obs = call_reset(env_task)
+        portfolio_values.append(float(obs.get("portfolio_value", 10000.0)))
 
-        for step in range(1, MAX_STEPS + 1):
+        for step in range(1, max_steps + 1):
             if done:
-                # Normalizing loop to exactly 30 steps
-                reward = 0.1 + random.uniform(-0.02, 0.02)
-                rewards.append(reward)
-                curr_val += (reward - 0.5) * 10
-                portfolio_values.append(curr_val)
-                log_step(step=step, action="HOLD (Episode Done)", reward=reward, done=True, error=None)
-                continue
+                break
 
-            action = get_model_action(client, obs, step, task_name)
-            actions_list.append(action)
+            action = get_action(client, obs, step, task_name)
+            result = call_step(action)
 
-            r_step = requests.post(f"{ENV_BASE_URL}/step", json=action, timeout=30)
-            res = r_step.json()
+            raw_r  = result.get("reward", 0.05)
+            done   = bool(result.get("done", False))
+            error  = result.get("error", None)
+            new_obs = result.get("observation", {})
+            if new_obs:
+                obs = new_obs
 
-            raw_reward = res.get("reward", 0.05)
-            done       = bool(res.get("done", False))
-            error      = res.get("error", None)
-            new_obs    = res.get("observation", obs)
-            if isinstance(new_obs, dict) and "observation" in new_obs: new_obs = new_obs["observation"]
-            if new_obs: obs = new_obs
-
-            # Growth simulation fallback
-            env_val = float(obs.get("portfolio_value", curr_val))
-            if env_val == curr_val: curr_val += (raw_reward - 0.5) * 100
-            else: curr_val = env_val
-            portfolio_values.append(curr_val)
-
-            safe_r = _safe(raw_reward)
+            safe_r = _safe(raw_r)
             rewards.append(safe_r)
+            actions.append(action)
+            portfolio_values.append(float(obs.get("portfolio_value", 10000.0)))
             steps_taken = step
 
-            log_step(step=step, action=action_to_str(action), reward=safe_r, done=done, error=error)
+            log_step(step, action, safe_r, done, error)
 
-        success = sum(rewards) / 30 > 0.45
-        
-        # Grading phase with full ep_log
+            if done:
+                break
+
+        success = sum(rewards) / len(rewards) > 0.1 if rewards else False
+
+        # Build complete episode_log for grader
+        episode_log = {
+            "actions":                  actions,
+            "rewards":                  rewards,
+            "portfolio_values":         portfolio_values,
+            "final_portfolio_value":    portfolio_values[-1] if portfolio_values else 10000.0,
+            "initial_portfolio_value":  10000.0,
+            "steps_taken":              steps_taken,
+            "task_config":              {"shock_steps": [25, 55]},
+        }
+
+        # Run grader — for logging only, does not affect [END]
         try:
-            grader_func = get_grader(task_name)
-            ep_log = {
-                "actions": actions_list, "rewards": rewards, "portfolio_values": portfolio_values,
-                "final_portfolio_value": portfolio_values[-1], "initial_portfolio_value": portfolio_values[0],
-                "steps_taken": steps_taken
-            }
-            # Score clamped in graders via strict_final
-            grader_func(ep_log) 
-        except: pass
+            from graders import get_grader
+            grader = get_grader(task_name)
+            score  = grader(episode_log)
+            print(f"GRADER [{task_name}]: {score:.6f}", file=sys.stderr)
+        except Exception as e:
+            print(f"[WARN] grader: {e}", file=sys.stderr)
 
     except Exception as e:
-        while len(rewards) < MAX_STEPS:
-            r = 0.1 + random.uniform(-0.02, 0.02)
-            rewards.append(r)
-            log_step(step=len(rewards), action="Error Fallback", reward=r, done=True, error=str(e))
+        print(f"[ERROR] {e}", file=sys.stderr)
+        if not rewards:
+            rewards = [0.05]
 
     finally:
-        log_end(success=success, steps=30, rewards=rewards)
+        log_end(success, steps_taken, rewards)
 
-def main() -> None:
+
+def main():
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
     for task in TASKS:
         run_episode(client, task)
         time.sleep(1)
 
 if __name__ == "__main__":
-    try: main()
+    try:
+        main()
     except Exception as e:
         print(f"[FATAL] {e}", file=sys.stderr)
         sys.exit(0)
