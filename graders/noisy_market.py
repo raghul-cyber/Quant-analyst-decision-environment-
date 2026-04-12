@@ -8,7 +8,7 @@ def _clamp(score) -> float:
     if math.isnan(score) or math.isinf(score):
         return 0.50
     score = round(score, 4)          # kill floating point creep
-    return max(0.01, min(score, 0.99))
+    return max(0.05, min(score, 0.95))
 
 def grade(episode_log: dict) -> float:
     try:
@@ -31,11 +31,11 @@ def grade(episode_log: dict) -> float:
                 peak = v
             if peak > 0:
                 max_dd = max(max_dd, (peak - v) / peak)
-        d_score = _clamp(0.99 - (max_dd / 0.15))
+        d_score = _clamp(0.95 - (max_dd / 0.15))
 
         n       = sum(1 for a in actions
                       if a.get("action_type","HOLD") in ("BUY","SELL"))
-        e_score = _clamp(0.99 - (min(n, 29) / 30))
+        e_score = _clamp(0.95 - (min(n, 29) / 30))
 
         return _clamp(0.4*p_score + 0.4*d_score + 0.2*e_score)
     except Exception:

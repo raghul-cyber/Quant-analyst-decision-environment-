@@ -14,7 +14,7 @@ def _clamp(score) -> float:
         return 0.5
     score = round(score, 4)          # kill floating point creep
     # Use 0.01 and 0.99 as safe bounds — far from 0 and 1
-    return max(0.01, min(score, 0.99))
+    return max(0.05, min(score, 0.95))
 
 
 def _safe_grade(grader_fn, episode_log: dict) -> float:
@@ -98,12 +98,12 @@ def grade_medium(episode_log: dict) -> float:
             if peak > 0:
                 max_dd = max(max_dd, (peak-v)/peak)
         # Map: 0% dd = 0.99, 15% dd = 0.01
-        d_score = 0.99 - (max_dd / 0.15)
+        d_score = 0.95 - (max_dd / 0.15)
         d_score = _clamp(d_score)
 
         n = sum(1 for a in actions
                 if a.get("action_type","HOLD") in ("BUY","SELL"))
-        e_score = 0.99 - (n / 30)
+        e_score = 0.95 - (n / 30)
         e_score = _clamp(e_score)
 
         final_score = 0.4*p_score + 0.4*d_score + 0.2*e_score

@@ -8,7 +8,7 @@ def _clamp(score) -> float:
     if math.isnan(score) or math.isinf(score):
         return 0.50
     score = round(score, 4)          # kill floating point creep
-    return max(0.01, min(score, 0.99))
+    return max(0.05, min(score, 0.95))
 
 def grade(episode_log: dict) -> float:
     try:

@@ -14,13 +14,12 @@ import math
 def _fmt_score(score) -> float:
     """
     Round to 4 decimal places and hard clamp.
-    Prevents floating point creep like 0.8700000000000001
+    Standardized to [0.05, 0.95] for validator safety.
     """
     try:
         s = float(score)
-        s = round(s, 4)          # 0.8700000000000001 -> 0.87
-        s = max(0.01, min(s, 0.99))
-        assert 0.0 < s < 1.0
+        s = round(s, 4)
+        s = max(0.05, min(s, 0.95))
         return s
     except Exception:
         return 0.50
@@ -244,13 +243,13 @@ def step(action: QADEAction):
     result = env.step(action)
     
     # Reward MUST come from real calculation
-    raw_reward = result.reward
-    if raw_reward <= 0.0:
-        raw_reward = 0.01   # safe floor, never exact zero
+    raw_reward = float(result.reward)
+    # HARD floor 0.05
+    safe_reward = max(0.05, min(raw_reward, 0.95))
 
     return {
         "observation": result.observation.model_dump() if hasattr(result.observation, 'model_dump') else result.observation.dict(),
-        "reward":      max(0.01, min(float(raw_reward), 0.99)),
+        "reward":      safe_reward,
         "done":        result.done,
         "info":        result.info if result.info else {}
     }
