@@ -25,6 +25,66 @@ def _safe(r, fallback=0.05) -> float:
     if r >= 1.0: return 0.998
     return r
 
+def _default_obs(task_name: str) -> dict:
+    """Minimal valid observation when env is unreachable."""
+    return {
+        "price_history":    [100.0 + i * 0.5 for i in range(30)],
+        "rsi":              52.3,
+        "macd":             0.12,
+        "macd_signal":      0.08,
+        "volume":           1.0,
+        "sentiment_score":  0.1,
+        "volatility":       0.18,
+        "portfolio_cash":   10000.0,
+        "portfolio_shares": 0.0,
+        "portfolio_value":  10000.0,
+        "step":             0,
+        "task_name":        task_name
+    }
+
+def call_reset(env_task: str) -> dict:
+    url = f"{ENV_BASE_URL}/reset"
+    try:
+        print(f"[DEBUG] POST {url} task={env_task}", file=sys.stderr)
+        r = requests.post(url, params={"task": env_task}, timeout=30)
+        print(f"[DEBUG] reset status={r.status_code}", file=sys.stderr)
+        print(f"[DEBUG] reset body={r.text[:200]}", file=sys.stderr)
+        r.raise_for_status()
+        data = r.json()
+        if "observation" in data:
+            return data["observation"]
+        return data
+    except requests.exceptions.ConnectionError as e:
+        print(f"[ERROR] Cannot connect to env at {url}: {e}", file=sys.stderr)
+        print(f"[ERROR] Is the env server running on {ENV_BASE_URL}?", file=sys.stderr)
+        return _default_obs(env_task)
+    except requests.exceptions.Timeout:
+        print(f"[ERROR] /reset timed out after 30s", file=sys.stderr)
+        return _default_obs(env_task)
+    except Exception as e:
+        print(f"[ERROR] /reset failed: {type(e).__name__}: {e}", file=sys.stderr)
+        return _default_obs(env_task)
+
+def call_step(action: dict) -> dict:
+    url = f"{ENV_BASE_URL}/step"
+    try:
+        print(f"[DEBUG] POST {url} action={action}", file=sys.stderr)
+        r = requests.post(url, json=action, timeout=30)
+        print(f"[DEBUG] step status={r.status_code}", file=sys.stderr)
+        print(f"[DEBUG] step body={r.text[:200]}", file=sys.stderr)
+        r.raise_for_status()
+        data = r.json()
+        return data
+    except requests.exceptions.ConnectionError as e:
+        print(f"[ERROR] Cannot connect to env at {url}: {e}", file=sys.stderr)
+        return {"observation": {}, "reward": 0.05, "done": True, "info": {}}
+    except requests.exceptions.Timeout:
+        print(f"[ERROR] /step timed out", file=sys.stderr)
+        return {"observation": {}, "reward": 0.05, "done": True, "info": {}}
+    except Exception as e:
+        print(f"[ERROR] /step failed: {type(e).__name__}: {e}", file=sys.stderr)
+        return {"observation": {}, "reward": 0.05, "done": True, "info": {}}
+
 def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
@@ -87,26 +147,6 @@ def get_action(client, obs, step, task_name):
     except Exception as e:
         print(f"[WARN] model error: {e}", file=sys.stderr)
         return {"action_type":"HOLD","amount":0.0,"reasoning":"model_error"}
-
-def call_reset(env_task):
-    try:
-        r = requests.post(f"{ENV_BASE_URL}/reset", params={"task":env_task}, timeout=30)
-        data = r.json()
-        return data.get("observation", data)
-    except Exception as e:
-        print(f"[WARN] reset error: {e}", file=sys.stderr)
-        return {"price_history":[100.0]*30,"rsi":50.0,"macd":0.0,
-                "sentiment_score":0.0,"volatility":0.2,
-                "portfolio_cash":10000.0,"portfolio_shares":0.0,
-                "portfolio_value":10000.0,"step":0}
-
-def call_step(action):
-    try:
-        r = requests.post(f"{ENV_BASE_URL}/step", json=action, timeout=30)
-        return r.json()
-    except Exception as e:
-        print(f"[WARN] step error: {e}", file=sys.stderr)
-        return {"observation":{},"reward":0.05,"done":True,"info":{}}
 
 def run_episode(client, task):
     task_name = task["task_name"]
