@@ -173,6 +173,28 @@ class QADEEnv:
 
 app = FastAPI(title="QADE Env API")
 
+from fastapi.responses import HTMLResponse
+
+@app.get("/", response_class=HTMLResponse)
+def index():
+    return """
+    <html>
+        <head><title>QADE Environment API</title></head>
+        <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f0f2f5;">
+            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;">
+                <h1 style="color: #1a73e8;">QADE Environment API</h1>
+                <p style="color: #5f6368;">The Quantitative Analyst Decision Environment is active.</p>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 1rem;">
+                    <span style="background: #e6f4ea; color: #137333; padding: 5px 12px; border-radius: 16px; font-size: 0.8rem;">Status: Online</span>
+                    <span style="background: #e8f0fe; color: #1967d2; padding: 5px 12px; border-radius: 16px; font-size: 0.8rem;">Version: 2.0.0</span>
+                </div>
+                <hr style="margin: 2rem 0; border: 0; border-top: 1px solid #eee;">
+                <p style="font-size: 0.9rem; color: #80868b;">Phase 2 Validation Ready</p>
+            </div>
+        </body>
+    </html>
+    """
+
 # At module level
 _envs = {}   # task_name -> QADEEnv instance
 
