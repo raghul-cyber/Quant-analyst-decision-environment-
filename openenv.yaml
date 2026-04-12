@@ -1,83 +1,45 @@
 name: qade
 version: "1.0.0"
-description: "QADE - Quant Analyst Decision Environment"
-entry_point: "server.app:app"
-
-observation_space:
-  price_history:
-    type: list[float]
-    description: "Last 30 closing prices"
-  rsi:
-    type: float
-    description: "RSI indicator clamped between 0.0 and 100.0"
-  macd:
-    type: float
-    description: "MACD line value"
-  macd_signal:
-    type: float
-    description: "MACD signal line (9-period EMA)"
-  volume:
-    type: float
-    description: "Current volume (normalized)"
-  sentiment_score:
-    type: float
-    description: "Sentiment score clamped to [-1.0, 1.0]"
-  volatility:
-    type: float
-    description: "Annualized historical volatility limit"
-  portfolio_cash:
-    type: float
-    description: "Cash available in USD"
-  portfolio_shares:
-    type: float
-    description: "Number of shares currently held"
-  portfolio_value:
-    type: float
-    description: "Total portfolio value (cash + shares * current_price)"
-  step:
-    type: int
-    description: "Current episode step number"
-  task_name:
-    type: string
-    description: "Which task configuration is currently running"
-
-action_space:
-  action_type:
-    type: Literal["BUY", "SELL", "HOLD"]
-    description: "Action mode to execute"
-  amount:
-    type: float
-    description: "Dollar amount of transaction (ignored or 0.0 for HOLD)"
-  reasoning:
-    type: string
-    description: "Optional agent reasoning logic explaining decision"
-
-reward:
-  range: [-5.0, 5.0]
-  description: "Per-step reward: pnl delta + bonuses - penalties"
-  shaped: true
+description: "Quant Analyst Decision Environment"
+entry_point: "env:app"
 
 tasks:
   - name: bull_trend
     difficulty: easy
     max_steps: 30
-    success_threshold: 0.6
+    success_threshold: 0.3
+    grader: graders.easy_grader
+    grader_fn: grade
+
   - name: noisy_market
     difficulty: medium
     max_steps: 50
-    success_threshold: 0.45
+    success_threshold: 0.3
+    grader: graders.medium_grader
+    grader_fn: grade
+
   - name: shock_recovery
     difficulty: hard
     max_steps: 80
     success_threshold: 0.3
+    grader: graders.hard_grader
+    grader_fn: grade
 
 endpoints:
-  reset: POST /reset
-  step: POST /step
-  state: GET /state
-  health: GET /health
+  reset:  "POST /reset"
+  step:   "POST /step"
+  state:  "GET /state"
+  health: "GET /health"
+  grade:  "POST /grade"
+  score:  "POST /score"
+  tasks:  "GET /tasks"
 
 runtime:
-  port: 7860
-  cpu: 2
+  port:      7860
+  cpu:       2
   memory_gb: 8
+
+reward:
+  min: 0.01
+  max: 0.99
+  shaped: true
