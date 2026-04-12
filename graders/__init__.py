@@ -97,13 +97,12 @@ def grade_medium(episode_log: dict) -> float:
             if peak > 0:
                 max_dd = max(max_dd, (peak-v)/peak)
         # Map: 0% dd = 0.99, 15% dd = 0.01
-        d_score = 1.0 - (max_dd / 0.15)
+        d_score = 0.99 - (max_dd / 0.15)
         d_score = _clamp(d_score)
 
-        # Component 3: Efficiency (20%)
         n = sum(1 for a in actions
                 if a.get("action_type","HOLD") in ("BUY","SELL"))
-        e_score = 1.0 - (n / 30)
+        e_score = 0.99 - (n / 30)
         e_score = _clamp(e_score)
 
         final_score = 0.4*p_score + 0.4*d_score + 0.2*e_score

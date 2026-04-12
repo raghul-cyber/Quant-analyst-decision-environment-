@@ -59,13 +59,13 @@ class RewardCalculator:
                 f"{self.task_name}:{self.step_count}:{self.seed}".encode()
             ).hexdigest()[:8], 16
         )
-        floor = 0.002 + (h % 1000) / 100000.0
+        floor = 0.01 + (h % 1000) / 100000.0
         # floor is now something like 0.002847 — unique per step+task
 
-        EXISTENCE_SIGNAL = 0.001
+        EXISTENCE_SIGNAL = 0.01
         
         final_reward = EXISTENCE_SIGNAL + base_reward - total_penalty + total_bonus
-        final_reward = max(floor, min(final_reward, 0.998))
+        final_reward = max(floor, min(final_reward, 0.99))
 
         return QADEReward(
             value=final_reward,

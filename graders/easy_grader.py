@@ -1,1 +1,1 @@
-from graders import grade
+from graders import grade_easy as grade

@@ -131,7 +131,7 @@ class QADEEnv:
     def step(self, action: QADEAction) -> StepResult:
         if self.done:
             obs = self._get_observation()
-            return StepResult(observation=obs, reward=0.002, done=True, info={"error": "Episode ended"})
+            return StepResult(observation=obs, reward=0.01, done=True, info={"error": "Episode ended"})
 
         obs_before = self._get_observation()
         current_price = self.price_series[self.current_step + self._history_len]
@@ -164,7 +164,7 @@ class QADEEnv:
         
         return StepResult(
             observation=obs_after,
-            reward=max(0.002, min(raw_reward, 0.998)),
+            reward=max(0.01, min(raw_reward, 0.99)),
             done=self.done,
             info={"reward_info": reward_obj.info}
         )
@@ -230,11 +230,11 @@ def step(action: QADEAction):
     # Reward MUST come from real calculation
     raw_reward = result.reward
     if raw_reward <= 0.0:
-        raw_reward = 0.002   # tiny signal, never exact zero
+        raw_reward = 0.01   # safe floor, never exact zero
 
     return {
         "observation": result.observation.model_dump() if hasattr(result.observation, 'model_dump') else result.observation.dict(),
-        "reward":      max(0.002, min(float(raw_reward), 0.998)),
+        "reward":      max(0.01, min(float(raw_reward), 0.99)),
         "done":        result.done,
         "info":        result.info if result.info else {}
     }

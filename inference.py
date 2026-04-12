@@ -30,14 +30,12 @@ Rules:
 - Do NOT output anything except the JSON object
 """
 
-def _safe(r, fallback=0.001) -> float:
+def _safe(r, fallback=0.01) -> float:
     try:
         r = float(r)
     except Exception: return fallback
     if math.isnan(r) or math.isinf(r): return fallback
-    if r <= 0.0: return 0.002
-    if r >= 1.0: return 0.998
-    return r
+    return max(0.01, min(r, 0.99))
 
 def _default_obs(task_name: str) -> dict:
     return {
@@ -67,17 +65,18 @@ def call_step(action: dict) -> dict:
         return r.json()
     except Exception as e:
         print(f"[ERROR] /step failed: {e}", file=sys.stderr)
-        return {"observation": {}, "reward": 0.001, "done": True, "info": {}}
+        return {"observation": {}, "reward": 0.05, "done": True, "info": {}}
 
 def log_start(task, env, model):
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 def log_step(step, action_str, reward, done, error):
-    print(f"[STEP] step={step} action={action_str} reward={_safe(reward):.6f} done={'true' if done else 'false'} error={error if error else 'null'}", flush=True)
+    safe_r = _safe(reward)
+    print(f"[STEP] step={step} action={action_str} reward={safe_r:.2f} done={'true' if done else 'false'} error={error if error else 'null'}", flush=True)
 
 def log_end(success, steps, rewards):
     safe_rewards = [_safe(r) for r in rewards] if rewards else [0.05]
-    rewards_str  = ",".join(f"{r:.6f}" for r in safe_rewards)
+    rewards_str  = ",".join(f"{r:.2f}" for r in safe_rewards)
     print(f"[END] success={'true' if success else 'false'} steps={steps} rewards={rewards_str}", flush=True)
 
 def parse_action(text: str) -> dict:
