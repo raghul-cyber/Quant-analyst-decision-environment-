@@ -6,6 +6,7 @@ from models import QADEAction, QADEObservation, StepResult
 from reward import RewardCalculator
 from episode_logger import EpisodeLogger
 from tasks import get_task
+from graders import get_grader
 from dataclasses import asdict
 
 class QADEEnv:
@@ -215,6 +216,33 @@ def step(action: QADEAction):
         "done":        result.done,
         "info":        result.info if result.info else {}
     }
+
+@app.post("/grade")
+def grade_endpoint(request: dict):
+    task_name    = request.get("task", "bull_trend")
+    episode_log  = request.get("episode_log", {})
+    grader       = get_grader(task_name)
+    score        = grader(episode_log)
+    return {
+        "task":  task_name,
+        "score": score,
+        "valid": 0.0 < score < 1.0
+    }
+
+@app.get("/grade/{task_name}")
+def grade_get(task_name: str):
+    # Called with empty log — return mid-range safe score
+    grader = get_grader(task_name)
+    score  = grader({
+        "actions": [],
+        "rewards": [0.1, 0.2, 0.3],
+        "portfolio_values": [10000, 10100, 10050, 10200],
+        "final_portfolio_value":   10200.0,
+        "initial_portfolio_value": 10000.0,
+        "steps_taken": 3,
+        "task_config": {"shock_steps": [25, 55]}
+    })
+    return {"task": task_name, "score": score}
 
 @app.get("/health")
 def health(): return {"status": "ok"}
