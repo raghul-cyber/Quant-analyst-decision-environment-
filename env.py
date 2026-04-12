@@ -12,7 +12,11 @@ class QADEEnv:
     def __init__(self, task: str, seed: int = 42):
         self.task = task
         self.seed = seed
-        self.max_steps = {"easy": 30, "medium": 50, "hard": 80}.get(task, 30)
+        self.max_steps = {
+            "easy": 30, "medium": 50, "hard": 80,
+            "bull_trend": 30, "noisy_market": 50, "shock_recovery": 80
+        }.get(task, 30)
+
         self.current_step = 0
         self.price_series = []
         self.portfolio_cash = 10000.0
