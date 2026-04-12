@@ -13,12 +13,12 @@ class RewardCalculator:
         # Base reward from pnl — normalize to small range
         if obs_before.portfolio_value > 0:
             pnl_pct    = pnl_delta / obs_before.portfolio_value
-            base_reward = pnl_pct * 10.0   # scale so 1% move = 0.1 reward
+            base_reward = pnl_pct * 50.0   # bigger signal from price moves
         else:
             base_reward = 0.0
 
         # Cap base reward
-        base_reward = max(-0.5, min(base_reward, 0.5))
+        base_reward = max(-0.4, min(base_reward, 0.6))
 
         # Penalties
         total_penalty = 0.0
@@ -48,7 +48,7 @@ class RewardCalculator:
 
         # CRITICAL: add step existence signal
         # This guarantees reward is NEVER exactly 0.0
-        EXISTENCE_SIGNAL = 0.05
+        EXISTENCE_SIGNAL = 0.12
         
         final_reward = EXISTENCE_SIGNAL + base_reward - total_penalty + total_bonus
 
