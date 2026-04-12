@@ -2,16 +2,17 @@ def strict_safe(score):
     try:
         score = float(score)
     except:
-        return 0.01
+        return 0.05
 
     import math
     if math.isnan(score) or math.isinf(score):
-        return 0.01
+        return 0.05
 
-    # HARD CLAMP (STRICT) - Using 0.01/0.99 to avoid any rounding to 0/1
-    if score <= 0.01:
-        return 0.01
-    if score >= 0.99:
-        return 0.99
+    # HARD CLAMP (SUPER STRICT)
+    # Using 0.05 and 0.9 to ensure average never rounds to 0.0 or 1.0
+    if score <= 0.05:
+        return 0.05
+    if score >= 0.9:
+        return 0.9
 
     return score

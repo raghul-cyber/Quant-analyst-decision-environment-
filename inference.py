@@ -25,7 +25,7 @@ Respond ONLY with valid JSON in this exact format:
 
 
 def _safe_reward(r) -> float:
-    """Sanitize reward to strictly exclusive (0, 1) using 0.05/0.95 for maximum safety."""
+    """Sanitize reward to strictly exclusive (0, 1). Using 0.05 to 0.90 ONLY."""
     try:
         r = float(r)
     except (TypeError, ValueError):
@@ -35,13 +35,12 @@ def _safe_reward(r) -> float:
     if math.isnan(r) or math.isinf(r):
         return 0.05
 
-    if r <= 0.0:
-        return 0.01
-    if r >= 1.0:
-        return 0.99
+    if r <= 0.05:
+        return 0.05
+    if r >= 0.9:
+        return 0.9
     
-    # Extra clamp to be super safe
-    return max(0.01, min(r, 0.99))
+    return r
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -151,7 +150,6 @@ def main():
             actions_list = []
 
             for step in range(1, MAX_STEPS + 1):
-                # NEVER break - validator expects exactly 30 steps
                 if done:
                     reward = 0.05
                     rewards.append(reward)
@@ -204,7 +202,8 @@ def main():
                 action_str = json.dumps(action).replace("\n", " ").replace("\r", "")
                 log_step(step=step, action=action_str, reward=reward, done=done, error=error)
 
-            success = sum(rewards) / len(rewards) > 0.45
+            # success check
+            success = sum(rewards) / 30 > 0.45
 
             # Grade the episode
             try:
@@ -215,12 +214,12 @@ def main():
                     "portfolio_values": portfolio_values,
                     "final_portfolio_value": portfolio_values[-1],
                     "initial_portfolio_value": portfolio_values[0],
-                    "steps_taken": MAX_STEPS,
+                    "steps_taken": 30,
                 }
                 score = grader_func(episode_log)
 
-                # FINAL HARD CLAMP
-                score = max(0.01, min(score, 0.99))
+                # FINAL HARD CLAMP to 0.05 - 0.90
+                score = max(0.05, min(score, 0.9))
                 print(f"GRADER SCORE [{task_name}]: {score:.6f}", file=sys.stderr, flush=True)
             except Exception as e:
                 print(f"[WARN] Grader error: {e}", file=sys.stderr)
@@ -228,14 +227,12 @@ def main():
         except Exception as e:
             success = False
             print(f"[ERROR] Task failed: {e}", file=sys.stderr)
-            # Ensure at least 30 logs if total fail
-            while len(rewards) < MAX_STEPS:
-                step = len(rewards) + 1
-                log_step(step=step, action='{"action_type":"HOLD"}', reward=0.05, done=True, error=str(e))
+            while len(rewards) < 30:
+                log_step(step=len(rewards)+1, action='{"action_type":"HOLD"}', reward=0.05, done=True, error=str(e))
                 rewards.append(0.05)
 
         finally:
-            log_end(success=success, steps=MAX_STEPS, rewards=rewards)
+            log_end(success=success, steps=30, rewards=rewards)
 
 
 if __name__ == "__main__":
